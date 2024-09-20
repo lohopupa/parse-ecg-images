@@ -14,8 +14,8 @@ This is a simple TypeScript project that sets up an HTTP server using `http-serv
 1. Clone the repository:
 
    ```bash
-   git clone <repository-url>
-   cd <repository-name>
+   git clone git@github.com:lohopupa/parse-ecg-images.git
+   cd parse-ecg-images
    ```
 
 2. Install dependencies:
