@@ -3,9 +3,9 @@
   "version": "1.0.0",
   "main": "index.js",
   "scripts": {
-    "start": "http-server . -p 6969",
+    "start": "http-server ./public -p 6969",
     "build": "tsc",
-    "dev": "concurrently \"tsc --watch\" \"http-server . -p 6969\""
+    "dev": "concurrently \"tsc --watch\" \"http-server ./public -p 6969\""
   },
   "author": "",
   "license": "ISC",

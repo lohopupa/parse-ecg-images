@@ -14,7 +14,6 @@ enum State {
 
 let state = State.IDLE
 
-
 const parametersLayout = {
     "type": "container",
     "title": "Parameters",
@@ -197,7 +196,7 @@ window.onload = () => {
     // canvas.addEventListener("mousedown", console.log)
     // canvas.addEventListener("mouseup", console.log)
     canvas.addEventListener("click", console.log)
-    
+
     renderParameters(parametersLayout)
 
     onResize()
@@ -223,11 +222,11 @@ function addFiles(event: Event) {
                     };
                     img.src = e.target?.result as string;
                 };
-            
+
                 reader.onerror = function () {
                     console.error(`Error reading image file: ${file.name}`);
                 };
-            
+
                 reader.readAsDataURL(file);
             } else {
                 console.error("Not an image file:", file.name)
@@ -243,15 +242,17 @@ function addFiles(event: Event) {
 function drawImageOnCanvas(img: HTMLImageElement) {
     const canvas = document.getElementById("canvas") as HTMLCanvasElement;
     const ctx = canvas.getContext("2d");
-
+    
     if (img && ctx) {
-        
-        let drawWidth, drawHeight;
-
-        
-
+        canvas.width = img.width
+        canvas.height = img.height
+        var hRatio = canvas.width / img.width
+        var vRatio = canvas.height / img.height
+        var ratio = Math.min(hRatio, vRatio)
+        var centerShift_x = (canvas.width - img.width * ratio) / 2
+        var centerShift_y = (canvas.height - img.height * ratio) / 2
         ctx.clearRect(0, 0, canvas.width, canvas.height)
-        // ctx.drawImage(img, 0, 0, drawWidth, drawHeight)
+        ctx.drawImage(img, 0, 0, img.width, img.height, centerShift_x, centerShift_y, img.width * ratio, img.height * ratio)
     } else {
         throw new Error("UGABUGA");
     }
@@ -272,46 +273,79 @@ function render() {
     drawImageOnCanvas(loadedImages[currentImage])
     zalupa()
 }
+
 function zalupa() {
-    const canvas = document.getElementById("canvas") as HTMLCanvasElement;
-    const ctx = canvas.getContext("2d") as CanvasRenderingContext2D;
-    const zoomRadius = 50;
-    const zoomScale = 1.5;
-    const img = loadedImages[currentImage];
+    const canvas = document.getElementById("canvas") as HTMLCanvasElement
+    const ctx = canvas.getContext("2d") as CanvasRenderingContext2D
+    const zoomRadius = 50
+    const zoomScale = 1.5
+    const img = loadedImages[currentImage]
 
-    // Calculate the ratio between image size and canvas size
-    const imageWidth = img.width;
-    const imageHeight = img.height;
-    const canvasWidth = canvas.width;
-    const canvasHeight = canvas.height;
-    
-    const widthRatio = imageWidth / canvasWidth;
-    const heightRatio = imageHeight / canvasHeight;
+    const widthRatio = img.width / canvas.width
+    const heightRatio = img.height / canvas.height
 
-    // Save canvas state and begin drawing the zoomed area
-    ctx.save();
-    ctx.beginPath();
-    
-    // Adjust the mouse position relative to the image
-    const mouseOX = mouseX * widthRatio;
-    const mouseOY = mouseY * heightRatio;
+    ctx.save()
+    ctx.beginPath()
+    const offset = 50
+    ctx.lineWidth = 1
+    ctx.strokeStyle = "black"
+    ctx.arc(mouseX + offset, mouseY + offset, zoomRadius, 0, Math.PI * 2)
+    ctx.stroke()
+    ctx.clip()
 
-    // Draw the zoom circle on the canvas
-    ctx.arc(mouseX, mouseY, zoomRadius, 0, Math.PI * 2);  // Use mouseX and mouseY for drawing the zoom circle on the canvas
-    ctx.clip(); // Clip the canvas to the circular zoom area
+    const srcX = (mouseX * widthRatio - zoomRadius / zoomScale)
+    const srcY = (mouseY * heightRatio - zoomRadius / zoomScale)
+    const srcW = (zoomRadius * 2) / zoomScale
+    const srcH = (zoomRadius * 2) / zoomScale
 
-    // Calculate the source area to zoom in on in the image
-    const srcX = (mouseOX - zoomRadius / zoomScale) * zoomScale;
-    const srcY = (mouseOY - zoomRadius / zoomScale) * zoomScale;
-    const srcW = (zoomRadius * 2) / zoomScale;
-    const srcH = (zoomRadius * 2) / zoomScale;
+    ctx.drawImage(img, 
+        srcX, srcY, srcW, srcH, 
+        mouseX - zoomRadius + offset, mouseY - zoomRadius + offset, zoomRadius * 2, zoomRadius * 2)
 
-    // Draw the zoomed-in part of the image on the canvas
-    ctx.drawImage(img, srcX, srcY, srcW, srcH, mouseX - zoomRadius, mouseY - zoomRadius, zoomRadius * 2, zoomRadius * 2);
-
-    // Restore the original canvas state
-    ctx.restore();
+    ctx.beginPath()
+    ctx.moveTo(mouseX - zoomRadius + offset, mouseY + offset)
+    ctx.lineTo(mouseX + zoomRadius + offset, mouseY + offset)
+    ctx.moveTo(mouseX + offset, mouseY - zoomRadius + offset)
+    ctx.lineTo(mouseX + offset, mouseY + zoomRadius + offset)
+    ctx.stroke()
+    ctx.restore()
 }
+
+
+function zalupa2() {
+    const canvas = document.getElementById("canvas") as HTMLCanvasElement
+    const ctx = canvas.getContext("2d") as CanvasRenderingContext2D
+    const zoomRadius = 50
+    const zoomScale = 1.5
+    const img = loadedImages[currentImage]
+
+    ctx.save()
+    ctx.beginPath()
+    const offset = 50
+    ctx.lineWidth = 1
+    ctx.strokeStyle = "black"
+    ctx.arc(mouseX, mouseY, zoomRadius, 0, Math.PI * 2)
+    ctx.stroke()
+    ctx.clip()
+
+    const srcX = (mouseX - zoomRadius / zoomScale)
+    const srcY = (mouseY - zoomRadius / zoomScale)
+    const srcW = (zoomRadius * 2) / zoomScale
+    const srcH = (zoomRadius * 2) / zoomScale
+
+    ctx.drawImage(img, 
+        srcX, srcY, srcW, srcH, 
+        mouseX - zoomRadius + offset, mouseY - zoomRadius + offset, zoomRadius * 2, zoomRadius * 2)
+
+    ctx.beginPath()
+    ctx.moveTo(mouseX - zoomRadius + offset, mouseY + offset)
+    ctx.lineTo(mouseX + zoomRadius + offset, mouseY + offset)
+    ctx.moveTo(mouseX + offset, mouseY - zoomRadius + offset)
+    ctx.lineTo(mouseX + offset, mouseY + zoomRadius + offset)
+    ctx.stroke()
+    ctx.restore()
+}
+
 
 function loadFiles() {
     const input = document.getElementById("load-files") as HTMLInputElement
