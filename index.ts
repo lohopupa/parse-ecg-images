@@ -251,7 +251,7 @@ function drawImageOnCanvas(img: HTMLImageElement) {
         
 
         ctx.clearRect(0, 0, canvas.width, canvas.height)
-        ctx.drawImage(img, 0, 0, drawWidth, drawHeight)
+        // ctx.drawImage(img, 0, 0, drawWidth, drawHeight)
     } else {
         throw new Error("UGABUGA");
     }
