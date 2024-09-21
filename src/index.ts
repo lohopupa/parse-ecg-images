@@ -1,207 +1,82 @@
+import { BaseElement, Button, Column, Row } from "./ui.js"
 
-const loadedImages: HTMLImageElement[] = []
-let currentImage = 0
-
-
-let mouseX = 0
-let mouseY = 0
-let mouseDown = false
-
-enum State {
-    SQARE,
-    IDLE
+type State = {
+    loadedImages: HTMLImageElement[]
+    currentImage: number
+    canvas: HTMLCanvasElement
+    ctx: CanvasRenderingContext2D
+    mouseX: number
+    mouseY: number
+    square: [number, number][]
 }
 
-let state = State.IDLE
+let state: State
 
-const parametersLayout = {
-    "type": "container",
-    "title": "Parameters",
-    "items": [
-        {
-            "type": "container",
-            "title": "Navigation",
-            "items": [
-                // {
-                //     "type": "label",
-                //     "title": `Image ${currentImage}/${loadedImages.length}`
-                // },
-                {
-                    "type": "button",
-                    "title": "Prev",
-                    "action": () => {
-                        currentImage = Math.max(0, currentImage - 1)
-                        render()
-                    }
-                },
-                {
-                    "type": "button",
-                    "title": "Next",
-                    "action": () => {
-                        currentImage = Math.min(loadedImages.length, currentImage + 1)
-                        render()
-                    }
-                },
-            ]
-        },
-        {
-            "type": "container",
-            "title": "AAA",
-            "items": [
-                {
-                    "type": "button",
-                    "title": "Square",
-                    "action": () => {
-                        state = State.SQARE
-                    }
-                }
-            ]
-        },
-        {
-            "type": "button",
-            "title": "Load files",
-            "action": loadFiles
-        },
-    ]
+const onPrevImageClick = () => {
+    state.currentImage = Math.max(0, state.currentImage - 1)
+    render()
 }
 
-function renderParameters(prms: any) {
+const onNextImageClick = () => {
+    state.currentImage = Math.min(state.loadedImages.length, state.currentImage + 1)
+    render()
+}
+
+const onSquareButtinClick = () => {
+    state.square.length = 0
+}
+
+const parameters = new Column("Parameters",
+    [
+        new Row("Navigation", [
+            new Button("Prev", onPrevImageClick),
+            new Button("next", onNextImageClick)
+        ]),
+        new Column("Squares", [
+            new Button("Square", onSquareButtinClick)
+        ]),
+        new Button("Load Files", loadFiles)
+    ])
+
+function renderParameters() {
     const left_bar = document.getElementById("left-bar") as HTMLElement
     left_bar.innerHTML = ''
-    const x = parameters2Html(prms)
-    if (x)
-        left_bar.appendChild(x)
-}
-
-function getParameters(prm: any, parentId = "") {
-    const elementId = getParameterId(prm, parentId)
-    switch (prm.type) {
-        case "container": {
-            return prm.items
-                .filter((i: any) => !["button"].includes(i.type))
-                .reduce((acc: any, i: any) => {
-                    acc[i.title.toLowerCase().replace(" ", "_")] = getParameters(i, elementId)
-                    return acc
-                }, {})
-        }
-        case "input":
-        case "textarea": {
-            const v = (document.getElementById(elementId) as HTMLTextAreaElement).value
-            switch (prm.valueType) {
-                case "int":
-                    const x = Number(v)
-                    if (isNaN(x)) {
-                        alert(`Value in field \"${prm["title"]}\" is not Integer`)
-                        throw `Value in field \"${prm["title"]}\" is not Integer`
-                    }
-                    return x
-                case "text":
-                    return v
-            }
-        }
-        case "button": break
-    }
-}
-
-function getParameterId(prm: any, parentId = "") {
-    return (parentId == "" ? "" : (parentId + "-")) + prm.title.toLowerCase()
-}
-
-function notImplementedElement() {
-    const title = document.createElement("p")
-    title.textContent = "NOT IMPLEMENTED"
-    return title
+    left_bar.appendChild(parameters.render())
 }
 
 
-function parameters2Html(prm: any, parentId = ""): HTMLDivElement {
-    switch (prm.type) {
-        case "container": {
-            const div = document.createElement('div');
-            div.className = "container"
-            const title = document.createElement("p")
-            title.textContent = prm.title
-            const items = document.createElement("div")
-            items.className = "items"
-            prm.items.forEach((i: any) => items.appendChild(parameters2Html(i, getParameterId(prm, parentId))))
-            div.appendChild(title)
-            div.appendChild(items)
-            return div
-
-        }
-        case "input": {
-            const div = document.createElement('div');
-            div.className = "input"
-            const title = document.createElement("p")
-            title.textContent = prm.title
-            const input = document.createElement("input")
-            input.type = "text"
-            input.value = prm.default
-            input.id = getParameterId(prm, parentId)
-            div.appendChild(title)
-            div.appendChild(input)
-            return div
-        }
-        case "textarea": {
-            const div = document.createElement('div');
-            div.className = "textarea"
-            const title = document.createElement("p")
-            title.textContent = prm.title
-            const input = document.createElement("textarea")
-            // input.type = "text"
-            input.placeholder = "Type rules here"
-            input.rows = 10
-            input.cols = 40
-            input.id = getParameterId(prm, parentId)
-            div.appendChild(title)
-            div.appendChild(input)
-            return div
-        }
-        case "button": {
-            const div = document.createElement('div');
-            div.className = "textarea"
-            const btn = document.createElement("button")
-            btn.textContent = prm.title
-            btn.addEventListener("click", prm.action)
-            div.appendChild(btn)
-            return div
-        }
-        case "label": {
-            const div = document.createElement('div');
-            div.className = "label"
-            const lbl = document.createElement("label")
-            lbl.textContent = prm.title
-            div.appendChild(lbl)
-            return div
-        }
-        default:
-            return notImplementedElement()
-    }
-
-}
-
-function mouseMove(e: MouseEvent) {
-
-}
 
 window.onload = () => {
     const input = document.getElementById("load-files") as HTMLInputElement
     input.addEventListener("change", addFiles)
     const canvas = document.getElementById("canvas") as HTMLCanvasElement
     canvas.addEventListener("mousemove", (e) => {
-        mouseX = e.offsetX;
-        mouseY = e.offsetY;
+        state.mouseX = e.offsetX;
+        state.mouseY = e.offsetY;
         render()
     });
     // canvas.addEventListener("mousedown", console.log)
     // canvas.addEventListener("mouseup", console.log)
-    canvas.addEventListener("click", console.log)
+    canvas.addEventListener("click", (e) => {
+        if (state.square.length < 4) {
+            state.square.push([e.offsetX, e.offsetY])
+        }
+    })
+    const ctx = canvas.getContext("2d") as CanvasRenderingContext2D
+    state = {
+        loadedImages: [],
+        currentImage: 0,
+        mouseX: 0,
+        mouseY: 0,
+        square: [],
+        canvas: canvas,
+        ctx: ctx
+    }
 
-    renderParameters(parametersLayout)
+    renderParameters()
 
     onResize()
     window.addEventListener("resize", onResize)
-
 
 
 }
@@ -218,7 +93,7 @@ function addFiles(event: Event) {
                 reader.onload = function (e) {
                     const img = new Image();
                     img.onload = function () {
-                        loadedImages.push(img)
+                        state.loadedImages.push(img)
                     };
                     img.src = e.target?.result as string;
                 };
@@ -235,119 +110,108 @@ function addFiles(event: Event) {
     } else {
         console.error("No files selected")
     }
-    // rrrr()
 }
 
 
 function drawImageOnCanvas(img: HTMLImageElement) {
-    const canvas = document.getElementById("canvas") as HTMLCanvasElement;
-    const ctx = canvas.getContext("2d");
-    
-    if (img && ctx) {
-        canvas.width = img.width
-        canvas.height = img.height
-        var hRatio = canvas.width / img.width
-        var vRatio = canvas.height / img.height
-        var ratio = Math.min(hRatio, vRatio)
-        var centerShift_x = (canvas.width - img.width * ratio) / 2
-        var centerShift_y = (canvas.height - img.height * ratio) / 2
-        ctx.clearRect(0, 0, canvas.width, canvas.height)
-        ctx.drawImage(img, 0, 0, img.width, img.height, centerShift_x, centerShift_y, img.width * ratio, img.height * ratio)
+
+    if (img) {
+        const hRatio = state.canvas.width / img.width
+        const vRatio = state.canvas.height / img.height
+        const ratio = Math.min(hRatio, vRatio)
+        state.ctx.clearRect(0, 0, state.canvas.width, state.canvas.height)
+        state.ctx.drawImage(img, 0, 0, img.width * ratio, img.height * ratio)
     } else {
         throw new Error("UGABUGA");
     }
 }
 
 function onResize() {
-    const canvas = document.getElementById("canvas") as HTMLCanvasElement
     const canvas_container = document.getElementById("canvas-container") as HTMLElement
 
-    canvas.width = canvas_container.clientWidth
-    canvas.height = canvas_container.clientHeight
+    state.canvas.width = canvas_container.clientWidth
+    state.canvas.height = canvas_container.clientHeight
 
-    // rrrr()
-    // render()
+    render()
 }
 
 function render() {
-    drawImageOnCanvas(loadedImages[currentImage])
-    zalupa()
+    drawImageOnCanvas(state.loadedImages[state.currentImage])
+    zoomWindow()
+    renderSquare()
+}
+function renderSquare() {
+    if (state.square.length > 1) {
+        state.ctx.strokeStyle = "red"
+        state.ctx.lineWidth = 1
+
+        for (let i = 0; i < state.square.length; i++) {
+            let sx: number, sy: number, ex: number, ey: number
+            [sx, sy] = state.square[i];
+            [ex, ey] = state.square[(i+1)%state.square.length];
+
+            state.ctx.beginPath()
+            state.ctx.moveTo(sx, sy)
+            state.ctx.lineTo(ex, ey)
+            state.ctx.stroke()
+            state.ctx.closePath()
+        }
+    }
+    state.ctx.fillStyle = "red"
+    state.ctx.strokeStyle = "blue"
+    state.ctx.lineWidth = 2
+
+    state.square.forEach(([cx, cy]) => drawCircle(state.ctx, cx, cy, 5))
 }
 
-function zalupa() {
-    const canvas = document.getElementById("canvas") as HTMLCanvasElement
-    const ctx = canvas.getContext("2d") as CanvasRenderingContext2D
+function zoomWindow() {
+
     const zoomRadius = 50
     const zoomScale = 1.5
-    const img = loadedImages[currentImage]
+    const img = state.loadedImages[state.currentImage]
 
-    const widthRatio = img.width / canvas.width
-    const heightRatio = img.height / canvas.height
-
-    ctx.save()
-    ctx.beginPath()
+    const hRatio = state.canvas.width / img.width
+    const vRatio = state.canvas.height / img.height
+    const ratio = Math.min(hRatio, vRatio)
     const offset = 50
-    ctx.lineWidth = 1
-    ctx.strokeStyle = "black"
-    ctx.arc(mouseX + offset, mouseY + offset, zoomRadius, 0, Math.PI * 2)
-    ctx.stroke()
-    ctx.clip()
 
-    const srcX = (mouseX * widthRatio - zoomRadius / zoomScale)
-    const srcY = (mouseY * heightRatio - zoomRadius / zoomScale)
+    state.ctx.save()
+    state.ctx.beginPath()
+    state.ctx.lineWidth = 1
+    state.ctx.strokeStyle = "black"
+    state.ctx.arc(state.mouseX + offset, state.mouseY + offset, zoomRadius, 0, Math.PI * 2)
+    state.ctx.stroke()
+    state.ctx.clip()
+
+    const srcX = (state.mouseX / ratio - zoomRadius / zoomScale)
+    const srcY = (state.mouseY / ratio - zoomRadius / zoomScale)
     const srcW = (zoomRadius * 2) / zoomScale
     const srcH = (zoomRadius * 2) / zoomScale
 
-    ctx.drawImage(img, 
-        srcX, srcY, srcW, srcH, 
-        mouseX - zoomRadius + offset, mouseY - zoomRadius + offset, zoomRadius * 2, zoomRadius * 2)
+    state.ctx.drawImage(img,
+        srcX, srcY, srcW, srcH,
+        state.mouseX - zoomRadius + offset, state.mouseY - zoomRadius + offset, zoomRadius * 2, zoomRadius * 2)
 
-    ctx.beginPath()
-    ctx.moveTo(mouseX - zoomRadius + offset, mouseY + offset)
-    ctx.lineTo(mouseX + zoomRadius + offset, mouseY + offset)
-    ctx.moveTo(mouseX + offset, mouseY - zoomRadius + offset)
-    ctx.lineTo(mouseX + offset, mouseY + zoomRadius + offset)
-    ctx.stroke()
-    ctx.restore()
-}
-
-
-function zalupa2() {
-    const canvas = document.getElementById("canvas") as HTMLCanvasElement
-    const ctx = canvas.getContext("2d") as CanvasRenderingContext2D
-    const zoomRadius = 50
-    const zoomScale = 1.5
-    const img = loadedImages[currentImage]
-
-    ctx.save()
-    ctx.beginPath()
-    const offset = 50
-    ctx.lineWidth = 1
-    ctx.strokeStyle = "black"
-    ctx.arc(mouseX, mouseY, zoomRadius, 0, Math.PI * 2)
-    ctx.stroke()
-    ctx.clip()
-
-    const srcX = (mouseX - zoomRadius / zoomScale)
-    const srcY = (mouseY - zoomRadius / zoomScale)
-    const srcW = (zoomRadius * 2) / zoomScale
-    const srcH = (zoomRadius * 2) / zoomScale
-
-    ctx.drawImage(img, 
-        srcX, srcY, srcW, srcH, 
-        mouseX - zoomRadius + offset, mouseY - zoomRadius + offset, zoomRadius * 2, zoomRadius * 2)
-
-    ctx.beginPath()
-    ctx.moveTo(mouseX - zoomRadius + offset, mouseY + offset)
-    ctx.lineTo(mouseX + zoomRadius + offset, mouseY + offset)
-    ctx.moveTo(mouseX + offset, mouseY - zoomRadius + offset)
-    ctx.lineTo(mouseX + offset, mouseY + zoomRadius + offset)
-    ctx.stroke()
-    ctx.restore()
+    state.ctx.beginPath()
+    state.ctx.moveTo(state.mouseX - zoomRadius + offset, state.mouseY + offset)
+    state.ctx.lineTo(state.mouseX + zoomRadius + offset, state.mouseY + offset)
+    state.ctx.moveTo(state.mouseX + offset, state.mouseY - zoomRadius + offset)
+    state.ctx.lineTo(state.mouseX + offset, state.mouseY + zoomRadius + offset)
+    state.ctx.stroke()
+    state.ctx.restore()
 }
 
 
 function loadFiles() {
     const input = document.getElementById("load-files") as HTMLInputElement
     input.click()
+}
+
+
+function drawCircle(ctx: CanvasRenderingContext2D, cx: number, cy: number, r: number) {
+    ctx.beginPath();
+    ctx.arc(cx, cy, r, 0, 2 * Math.PI);
+    ctx.stroke();
+    ctx.fill();
+    ctx.closePath();
 }
