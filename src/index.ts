@@ -141,27 +141,41 @@ function render() {
     renderSquare()
 }
 function renderSquare() {
-    if (state.square.length > 1) {
-        state.ctx.strokeStyle = "red"
-        state.ctx.lineWidth = 1
-
-        for (let i = 0; i < state.square.length; i++) {
-            let sx: number, sy: number, ex: number, ey: number
-            [sx, sy] = state.square[i];
-            [ex, ey] = state.square[(i+1)%state.square.length];
-
-            state.ctx.beginPath()
-            state.ctx.moveTo(sx, sy)
-            state.ctx.lineTo(ex, ey)
-            state.ctx.stroke()
-            state.ctx.closePath()
-        }
+    if(state.square.length == 0){
+        return
+    }
+    let sx: number, sy: number, ex: number, ey: number
+    [sx, sy] = state.square[0]
+    if (state.square.length == 1){
+        [ex, ey] = [state.mouseX, state.mouseY]
+    }else{
+        [ex, ey] = state.square[0]
     }
     state.ctx.fillStyle = "red"
     state.ctx.strokeStyle = "blue"
     state.ctx.lineWidth = 2
+    drawSquare(state.ctx, sx, sy, ex, ey)
+    // if (state.square.length > 1) {
+    //     state.ctx.strokeStyle = "red"
+    //     state.ctx.lineWidth = 1
 
-    state.square.forEach(([cx, cy]) => drawCircle(state.ctx, cx, cy, 5))
+    //     for (let i = 0; i < state.square.length; i++) {
+    //         let sx: number, sy: number, ex: number, ey: number
+    //         [sx, sy] = state.square[i];
+    //         [ex, ey] = state.square[(i+1)%state.square.length];
+
+    //         state.ctx.beginPath()
+    //         state.ctx.moveTo(sx, sy)
+    //         state.ctx.lineTo(ex, ey)
+    //         state.ctx.stroke()
+    //         state.ctx.closePath()
+    //     }
+    // }
+    // state.ctx.fillStyle = "red"
+    // state.ctx.strokeStyle = "blue"
+    // state.ctx.lineWidth = 2
+
+    // state.square.forEach(([cx, cy]) => drawCircle(state.ctx, cx, cy, 5))
 }
 
 function zoomWindow() {
@@ -214,4 +228,18 @@ function drawCircle(ctx: CanvasRenderingContext2D, cx: number, cy: number, r: nu
     ctx.stroke();
     ctx.fill();
     ctx.closePath();
+}
+function drawSquare(ctx: CanvasRenderingContext2D, x1: number, y1: number, x2: number, y2: number) {
+    const side = Math.abs(x2 - x1);
+
+    const signX = Math.sign(x2 - x1);
+    const signY = Math.sign(y2 - y1);
+
+    ctx.beginPath();
+    ctx.moveTo(x1, y1);
+    ctx.lineTo(x1 + side * signX, y1);
+    ctx.lineTo(x1 + side * signX, y1 + side * signY);
+    ctx.lineTo(x1, y1 + side * signY);
+    ctx.closePath();
+    ctx.stroke();
 }
