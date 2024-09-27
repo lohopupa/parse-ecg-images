@@ -63,6 +63,55 @@ class Button extends BaseElement {
         return div;
     }
 }
+class Input extends BaseElement {
+    constructor(title, callback, defaultValue) {
+        super(title);
+        this.className = "input";
+        this.callback = callback;
+        this.defaultValue = defaultValue;
+    }
+    render(parentId) {
+        var _a, _b;
+        const div = this.renderWrapper();
+        const title = document.createElement("p");
+        title.textContent = this.title;
+        const input = document.createElement("input");
+        input.value = (_b = (_a = this.defaultValue) === null || _a === void 0 ? void 0 : _a.toString()) !== null && _b !== void 0 ? _b : "";
+        input.addEventListener("input", this.callback);
+        div.appendChild(title);
+        div.appendChild(input);
+        return div;
+    }
+}
+class ToggleBoxes extends BaseElement {
+    constructor(title, items, onChange) {
+        super(title);
+        this.className = "toggle-boxes";
+        this.items = items;
+        this.onChange = onChange;
+    }
+    handleToggle(index) {
+        this.items[index].value = !this.items[index].value;
+        this.onChange(this.items);
+    }
+    render(parentId) {
+        const div = this.renderWrapper();
+        this.items.forEach((item, index) => {
+            const label = document.createElement("label");
+            label.classList.add(this.className);
+            const checkbox = document.createElement("input");
+            checkbox.type = "checkbox";
+            checkbox.checked = item.value;
+            checkbox.addEventListener("change", () => this.handleToggle(index));
+            const span = document.createElement("span");
+            span.textContent = item.label;
+            label.appendChild(checkbox);
+            label.appendChild(span);
+            div.appendChild(label);
+        });
+        return div;
+    }
+}
 // TODO: i am not sure about it
 const injectStyles = (css) => {
     const style = document.createElement('style');
@@ -84,75 +133,44 @@ injectStyles(`
     display: flex;
     flex-direction: column;
     margin: 5px;
+    width: fit-content;
+    gap: 5px;
 }
 .items {
     border: 1px solid rgb(54, 54, 54);
 }
+.input {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    margin: 10px;
+    border: 4px black;
+    height: 30px;
+    gap: 10px;
+}
+
+.input input {
+    width: 150px;
+}
+.toggle-boxes {
+    display: flex;
+    flex-direction: column;
+    margin: 10px;
+}
+
+.toggle-boxes label {
+    display: flex;
+    flex-direction: row;
+    gap: 10px;
+    cursor: pointer;
+}
+
+.toggle-boxes input[type="checkbox"] {
+    transform: scale(1.2);
+}
+
+.toggle-boxes span {
+    font-size: 16px;
+}
 `);
-export { BaseElement, Button, Column, Row };
-// .container {
-//     display: flex;
-//     flex-direction: column;
-//     /* margin-left: 20px; */
-//     margin: 10px;
-// }
-// /* .container button {
-//     color: brown;
-// } */
-// .button {
-//     display: flex;
-//     flex-direction: column;
-//     align-items: center;
-//     justify-content: center;
-//     /* margin-left: 20px; */
-//     margin: 10px;
-// }
-// .button button {
-//     width: fit-content;
-// }
-// .label {
-//     display: flex;
-//     flex-direction: row;
-//     align-items: center;
-//     /* margin-left: 20px; */
-//     margin: 10px;
-//     border: 4px black;
-//     height: 30px;
-//     gap: 10px;
-// }
-// .input {
-//     display: flex;
-//     flex-direction: row;
-//     align-items: center;
-//     /* margin-left: 20px; */
-//     margin: 10px;
-//     border: 4px black;
-//     height: 30px;
-//     gap: 10px;
-// }
-// .input input {
-//     width: 150px;
-// }
-// .textarea {
-//     display: flex;
-//     flex-direction: column;
-//     margin: 10px;
-//     border: 4px black;
-// }
-// .textarea textarea{
-//     resize: none;
-// }
-// .items {
-//     border: 1px solid rgb(54, 54, 54);
-// }
-// /* .column{
-//     margin: 10px;
-//     display: flex;
-//     flex-direction: column;
-// }
-// .row{
-//     height: 30px;
-//     display: flex;
-//     flex-direction: row;
-//     gap: 10px;
-// } */
+export { BaseElement, Button, Column, Row, Input, ToggleBoxes };
