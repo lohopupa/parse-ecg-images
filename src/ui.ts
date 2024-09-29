@@ -74,6 +74,31 @@ class Button extends BaseElement {
     }
 }
 
+class Label extends BaseElement {
+    className = "label"
+    id = ""
+
+    constructor(value: string) {
+        super(value)
+    }
+
+    updateValue(value: string){
+        this.title = value
+        const title = document.getElementById(this.id) as HTMLLabelElement
+        title.innerHTML = value
+    }
+
+    override render(parentId?: string) {
+        this.id = this.getId(parentId ?? "")
+        const div = this.renderWrapper()
+        const label = document.createElement("label")
+        label.textContent = this.title
+        label.id = this.id
+        div.appendChild(label)
+        return div
+    }
+}
+
 class Input extends BaseElement {
     className = "input"
     callback: (e: Event) => void
@@ -141,6 +166,55 @@ class ToggleBoxes extends BaseElement {
     }
 }
 
+type RadioButtonItem = {
+    label: string
+    value: string
+    selected: boolean
+}
+
+class RadioButtonGroup extends BaseElement {
+    className = "radio-button-group"
+    items: RadioButtonItem[]
+    onChange: (selectedItem: RadioButtonItem) => void
+    dir: "col" | "row"
+
+    constructor(title: string, items: RadioButtonItem[], onChange: (selectedItem: RadioButtonItem) => void, dir: "col" | "row" = "row") {
+        super(title)
+        this.items = items
+        this.onChange = onChange
+        this.dir = dir
+        this.className += " " + dir
+    }
+
+    handleSelect(index: number) {
+        this.items.forEach((item, i) => item.selected = i === index)
+        this.onChange(this.items[index])
+    }
+
+    override render(parentId?: string) {
+        const div = this.renderWrapper()
+        this.items.forEach((item, index) => {
+            const label = document.createElement("label")
+            label.classList.add(...this.className.split(" "))
+
+            const radioButton = document.createElement("input")
+            radioButton.type = "radio"
+            radioButton.name = this.className
+            radioButton.checked = item.selected
+            radioButton.addEventListener("change", () => this.handleSelect(index))
+
+            const span = document.createElement("span")
+            span.textContent = item.label
+
+            label.appendChild(radioButton)
+            label.appendChild(span)
+            div.appendChild(label)
+        })
+        return div
+    }
+}
+
+
 // TODO: i am not sure about it
 const injectStyles = (css: string) => {
     const style = document.createElement('style');
@@ -202,7 +276,35 @@ injectStyles(`
 .toggle-boxes span {
     font-size: 16px;
 }
+    .radio-button-group {
+    display: flex;
+    margin: 10px;
+}
+
+.radio-button-group.row {
+    flex-direction: row;
+}
+
+.radio-button-group.col {
+    flex-direction: column;
+}
+
+.radio-button-group label {
+    display: flex;
+    flex-direction: row;
+    gap: 10px;
+    cursor: pointer;
+    align-items: center;
+}
+
+.radio-button-group input[type="radio"] {
+    transform: scale(1.2);
+}
+
+.radio-button-group span {
+    font-size: 16px;
+}
 `);
 
 
-export { BaseElement, Button, Column, Row, Input, ToggleBoxItem, ToggleBoxes }
+export { BaseElement, Button, Column, Row, Input, ToggleBoxItem, ToggleBoxes, Label, RadioButtonGroup, RadioButtonItem }

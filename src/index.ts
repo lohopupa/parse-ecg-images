@@ -1,7 +1,10 @@
-import { BaseElement, Button, Column, Input, Row, ToggleBoxes } from "./ui.js"
+import { BaseElement, Button, Column, Input, Label, RadioButtonGroup, RadioButtonItem, Row, ToggleBoxes } from "./ui.js"
 import { findIntersection, Vector2 } from "./vector2.js"
 
-const LEAFS_COUNT = 12
+
+const fileHeader = ["I", "II", "III", "aVR", "aVL", "aVF", "V1", "V2", "V3", "V4", "V5", "V6"]
+const LEAFS_COUNT = fileHeader.length
+const leafBoxHandleSize = new Vector2(30, 20)
 enum Action {
     NOTHING,
     DRAW_SQUARE,
@@ -10,11 +13,35 @@ enum Action {
     FIND_DATA
 }
 
+type Sex = "male" | "female" | "none"
+
+enum FindDataAction {
+    NOTHING,
+    ADJUST_BOX,
+    TUNE_LEAF
+}
+
+type LeafPoint = {
+    x: number
+    y: number
+    d: number
+    modified: boolean
+}
+
+type LeafBox = {
+    offset: number,
+    height: number
+}
+
+type AdjustBoxAction = null | "top" | "bottom" | "leaf"
+
 type State = {
-    loadedImages: HTMLImageElement[]
+    loadedImages: {img: HTMLImageElement, filepath: string}[]
+    // loadedImages: HTMLImageElement[]
     currentImage: number
     canvas: HTMLCanvasElement
     ctx: CanvasRenderingContext2D
+    initialCanvasSize: Vector2
     mouseX: number
     mouseY: number
     mouseDelta: Vector2
@@ -26,6 +53,15 @@ type State = {
     dragging: boolean
     pointsPerSquare: number
     cropedImage: ImageData | null
+    currentLeaf: number
+    leafsData: LeafPoint[][] | null
+    leafsBoxes: LeafBox[]
+    findDataAction: FindDataAction
+    adjustBoxAction: AdjustBoxAction
+    qt: number
+    sex: Sex
+    speedX: number
+    speedY: number
 }
 
 let state: State
@@ -47,11 +83,13 @@ const colors = [
 
 const onPrevImageClick = () => {
     state.currentImage = Math.max(0, state.currentImage - 1)
+    clean()
     render()
 }
 
 const onNextImageClick = () => {
     state.currentImage = Math.min(state.loadedImages.length, state.currentImage + 1)
+    clean()
     render()
 }
 
@@ -70,7 +108,7 @@ const onMoveChannelsButtonClick = () => {
 }
 
 const onCropImageButtonClick = async () => {
-    const img = state.loadedImages[state.currentImage]
+    const img = state.loadedImages[state.currentImage].img
     // const img = await loadImageFromUrl(state.canvas.toDataURL())
     const [sp1, sp2, sp3, sp4] = state.squarePoints
     const { p1, p2: p3 } = state.channels
@@ -86,6 +124,7 @@ const onCropImageButtonClick = async () => {
     state.cropedImage = await extractAndAlignRectangle(img, points)
     state.action = Action.FIND_DATA
     render()
+    onFindDataButtonClick()
 }
 
 async function loadImageFromUrl(url: string) {
@@ -97,14 +136,88 @@ async function loadImageFromUrl(url: string) {
     })
 }
 
+function renderLeafs() {
+    if (!state.leafsData) {
+        return
+    }
+
+    for (let i = 0; i < state.leafsData.length; i++) {
+        const { height, offset } = state.leafsBoxes[i]
+
+        const leaf = state.leafsData[i]
+
+        state.ctx.lineWidth = state.currentLeaf == i ? 3 : 1
+        state.ctx.strokeStyle = state.currentLeaf == i ? "#00FF00AA" : "#FF0000AA"
+        state.ctx.beginPath()
+        state.ctx.moveTo(0, offset + leaf[0].y)
+        for (let x = 1; x < leaf.length; x++) {
+            state.ctx.lineTo(x, offset + leaf[x].y)
+        }
+        state.ctx.moveTo(0, leaf[0].y)
+        state.ctx.closePath()
+        state.ctx.stroke()
+        if (state.currentLeaf == i) {
+            state.ctx.strokeStyle = "#0000FFAA"
+            state.ctx.beginPath()
+            state.ctx.moveTo(0, offset + leaf[0].y)
+            for (let x = 1; x < leaf.length; x++) {
+                if (leaf[x].modified) {
+                    state.ctx.lineTo(x, offset + leaf[x].y)
+                } else {
+                    state.ctx.moveTo(x, offset + leaf[x].y)
+                }
+            }
+            state.ctx.moveTo(0, leaf[0].y)
+            state.ctx.closePath()
+            state.ctx.stroke()
+        }
+    }
+}
+
 const onFindDataButtonClick = () => {
     state.action = Action.FIND_DATA
+    if (!state.cropedImage) {
+        return
+    }
+    const img = state.cropedImage
+
+    const x = 0;
+    const h = Math.floor(img.height / LEAFS_COUNT)
+    const w = img.width
+
+    state.leafsData = Array.from({ length: LEAFS_COUNT }, (_, i) => {
+        const y = Math.floor(h * i)
+        const leaf = getSubImageData(img, x, y, w, h)
+        return extractECGPixels(leaf)
+    })
+    state.leafsBoxes = Array.from({ length: LEAFS_COUNT }, (_, i) => {
+        const y = Math.floor(h * i)
+        return { offset: y, height: h }
+    })
+    render()
+}
+
+const onSpeedXChange = (e: Event) => {
+    const target = e.target as HTMLInputElement
+    state.speedX = Number(target.value)
+}
+const onSpeedYChange = (e: Event) => {
+    const target = e.target as HTMLInputElement
+    state.speedY = Number(target.value)
 }
 
 const onPPSChange = (e: Event) => {
     const target = e.target as HTMLInputElement
     state.pointsPerSquare = Number(target.value)
-    console.log(state.pointsPerSquare)
+}
+
+const onQTChange = (e: Event) => {
+    const target = e.target as HTMLInputElement
+    state.qt = Number(target.value)
+}
+
+const onSEXChange = (v: RadioButtonItem) => {
+    state.sex = v.value as Sex
 }
 
 function renderParameters(parameters: BaseElement) {
@@ -112,6 +225,56 @@ function renderParameters(parameters: BaseElement) {
     left_bar.innerHTML = ''
     left_bar.appendChild(parameters.render())
 }
+
+const currentLeafLabel = new Label("All")
+const fileLabel = new Label("Load file")
+
+function onLeafPrevButtonClick() {
+    if (state.currentLeaf == -1) {
+        state.currentLeaf = 0
+    } else {
+        state.currentLeaf = Math.max(state.currentLeaf - 1, 0)
+    }
+    currentLeafLabel.updateValue(state.currentLeaf.toString())
+    render()
+}
+function onLeafAllButtonClick() {
+    state.currentLeaf = -1
+    currentLeafLabel.updateValue("All")
+    render()
+}
+function onLeafNextButtonClick() {
+    if (state.currentLeaf == -1) {
+        state.currentLeaf = 0
+    } else {
+        state.currentLeaf = Math.min(state.currentLeaf + 1, LEAFS_COUNT - 1)
+    }
+    currentLeafLabel.updateValue(state.currentLeaf.toString())
+    render()
+}
+
+function onSaveButtonClicked() {
+    if (!state.leafsData) {
+        alert("There is no leafs data")
+        return
+    }
+    const { sex, qt } = state
+    const imgPath = state.loadedImages[state.currentImage].filepath
+    const filePath = `${imgPath}_${sex}_${qt}.csv`
+    const [p1, p2, p3, p4] = state.squarePoints
+    downloadCSV(fileHeader, state.leafsData.map((l) => convertEcgData(l.map((p) => p.y), state.speedX, state.speedY, p1.distance(p2), state.pointsPerSquare)), filePath)
+}
+
+
+function onUpdateLeafButtonClick() {
+    // state.findDataAction = FindDataAction.ADJUST_BOX
+    updateLeafPoints()
+    render()
+}
+// function onTuneLeafButtonClick(){
+//     state.findDataAction = FindDataAction.TUNE_LEAF
+// }
+
 
 window.onload = () => {
     const input = document.getElementById("load-files") as HTMLInputElement
@@ -125,9 +288,25 @@ window.onload = () => {
     });
     canvas.addEventListener("mousedown", () => {
         state.dragging = true
+        if (state.action == Action.FIND_DATA) {
+            const [top, bottom] = getLeafBoxHandles()
+            const mouse = new Vector2(state.mouseX, state.mouseY)
+            if (pointOverRect(mouse, top, leafBoxHandleSize)) {
+                state.adjustBoxAction = "top"
+            } else if (pointOverRect(mouse, bottom, leafBoxHandleSize)) {
+                state.adjustBoxAction = "bottom"
+            } else if (pointOverRect(mouse,
+                new Vector2(0, state.leafsBoxes[state.currentLeaf].offset),
+                new Vector2(state.canvas.width, state.leafsBoxes[state.currentLeaf].height))) {
+                state.adjustBoxAction = "leaf"
+                // updateLeafPoints()
+            }
+        }
     })
     canvas.addEventListener("mouseup", () => {
         state.dragging = false
+        state.adjustBoxAction = null
+        updateLeafPoints()
     })
     canvas.addEventListener("click", (e) => {
         switch (state.action) {
@@ -152,6 +331,9 @@ window.onload = () => {
             case Action.MOVE_CHANNELS: {
                 break;
             }
+            case Action.FIND_DATA: {
+
+            }
         }
     })
     const ctx = canvas.getContext("2d") as CanvasRenderingContext2D
@@ -171,33 +353,73 @@ window.onload = () => {
         mouseDelta: Vector2.Zero,
         pointsPerSquare: 10,
         cropedImage: null,
+        initialCanvasSize: Vector2.Zero,
+        currentLeaf: -1,
+        leafsData: null,
+        findDataAction: FindDataAction.NOTHING,
+        leafsBoxes: [],
+        adjustBoxAction: null,
+        qt: 0,
+        sex: "none",
+        speedX: 50,
+        speedY: 10,
     }
 
     const parameters = new Column("Parameters",
         [
+            new Column("Settings", [
+                fileLabel,
+                new Column("", [
+                    new Input("Speed", onSpeedXChange, state.speedX),
+                    new Input("Apmlitude", onSpeedYChange, state.speedY),
+                    new Input("Points per square", onPPSChange, state.pointsPerSquare),
+
+                ]),
+                new Input("QT", onQTChange, 0),
+                new RadioButtonGroup(
+                    "SEX",
+                    [
+                        { label: "Male", value: "male", selected: false },
+                        { label: "Female", value: "female", selected: false },
+                        { label: "Combat Helicopter", value: "none", selected: true },
+                    ],
+                    onSEXChange,
+                    "col"),
+                new Button("Save", onSaveButtonClicked)
+
+            ]),
             new Column("Action", [
-                new Button("Load Files", loadFiles),
-                new Button("Draw square", onSquareButtonClick),
-                new Button("Select chanels", onSelectChannelsButtonClick),
-                new Button("Move chanels", onMoveChannelsButtonClick),
-                new Button("Crop", onCropImageButtonClick),
-                new Button("Find data", onFindDataButtonClick),
+                new Column("Prepare Data", [
+                    new Button("Load Files", loadFiles),
+                    new Button("Draw square", onSquareButtonClick),
+                    new Button("Select chanels", onSelectChannelsButtonClick),
+                    new Button("Move chanels", onMoveChannelsButtonClick),
+                    new Button("Crop", onCropImageButtonClick),
+                ]),
+                new Column("AAAA Data", [
+                    new Button("Find data", onFindDataButtonClick),
+                    new Button("Update leaf", onUpdateLeafButtonClick),
+                    // new Button("Tune Leaf", onTuneLeafButtonClick),
+                ]),
+            ]),
+            new Column("Leafs", [
+                currentLeafLabel,
+                new Row("", [
+                    new Button("Prev", onLeafPrevButtonClick),
+                    new Button("All", onLeafAllButtonClick),
+                    new Button("Next", onLeafNextButtonClick),
+                ])
             ]),
             new Row("Navigation", [
                 new Button("Prev", onPrevImageClick),
                 new Button("next", onNextImageClick)
             ]),
-            new Column("Settings", [
-                new Input("Points per square", onPPSChange, state.pointsPerSquare),
-                new Button("Calc", calc)
-
-            ])
         ])
-
 
     renderParameters(parameters)
 
     onResize()
+    state.initialCanvasSize.set(canvas.width, canvas.height)
     document.addEventListener("resize", onResize)
 }
 
@@ -209,17 +431,19 @@ function addFiles(event: Event) {
 
         files.forEach(file => {
             if (file.type.startsWith("image/")) {
-                const reader = new FileReader();
+                const reader = new FileReader()
+                const fn = file.name
                 reader.onload = function (e) {
-                    const img = new Image();
+                    const img = new Image()
                     img.onload = function () {
-                        state.loadedImages.push(img)
+                        state.loadedImages.push({img: img, filepath: fn})
+                        // state.loadedImages.push(img)
                     };
                     img.src = e.target?.result as string;
                 };
 
                 reader.onerror = function () {
-                    console.error(`Error reading image file: ${file.name}`);
+                    console.error(`Error reading image file: ${file.name}`)
                 };
 
                 reader.readAsDataURL(file);
@@ -232,7 +456,8 @@ function addFiles(event: Event) {
     }
 }
 
-function drawImageOnCanvas(canvas: HTMLCanvasElement, ctx: CanvasRenderingContext2D, img: HTMLImageElement){
+function drawImageOnCanvas(canvas: HTMLCanvasElement, ctx: CanvasRenderingContext2D, img: HTMLImageElement) {
+    // const canvas_container = document.getElementById("canvas-container") as HTMLElement
     const hRatio = canvas.width / img.width
     const vRatio = canvas.height / img.height
     const ratio = Math.min(hRatio, vRatio)
@@ -249,6 +474,10 @@ function drawImageOnStateCanvas(img: HTMLImageElement) {
 function onResize() {
     const canvas_container = document.getElementById("canvas-container") as HTMLElement
 
+    state.canvas.width = 0
+    state.canvas.height = 0
+
+
     state.canvas.width = canvas_container.clientWidth
     state.canvas.height = canvas_container.clientHeight
 
@@ -257,7 +486,11 @@ function onResize() {
 
 function render() {
     state.ctx.font = "30px Arial"
-    drawImageOnStateCanvas(state.loadedImages[state.currentImage])
+    if(!state.loadedImages[state.currentImage]){
+        return
+    }
+    fileLabel.updateValue(state.loadedImages[state.currentImage].filepath)
+    drawImageOnStateCanvas(state.loadedImages[state.currentImage].img)
     renderSquare()
     if (state.action != Action.FIND_DATA) {
         if (state.action == Action.MOVE_CHANNELS && state.dragging) {
@@ -273,23 +506,102 @@ function render() {
 
         if (state.action == Action.DRAW_SQUARE)
             zoomWindow()
-    } else if (state.cropedImage) {
-        state.canvas.width = state.cropedImage.width
-        state.canvas.height = state.cropedImage.height
-        state.ctx.putImageData(state.cropedImage, 0, 0)
+    } else if (state.action == Action.FIND_DATA && state.cropedImage) {
+        if (state.dragging) {
+            if (state.currentLeaf != -1) {
+                if (state.adjustBoxAction == "top") {
+                    state.leafsBoxes[state.currentLeaf].offset += state.mouseDelta.y
+                    // if (state.leafsData) {
+                    //     for (let i = 0; i < state.leafsData[state.currentLeaf].length; i++) {
+                    //         state.leafsData[state.currentLeaf][i].y -= (state.mouseDelta.y / 4)
+                    //     }
+                    // }   
+                    state.leafsBoxes[state.currentLeaf].height -= state.mouseDelta.y
+                } else if (state.adjustBoxAction == "bottom") {
+                    state.leafsBoxes[state.currentLeaf].height += state.mouseDelta.y
+                } else if (state.adjustBoxAction == "leaf") {
+                    if (state.leafsData) {
+                        state.leafsData[state.currentLeaf][state.mouseX].y = state.mouseY - state.leafsBoxes[state.currentLeaf].offset
+                        state.leafsData[state.currentLeaf][state.mouseX].modified = true
+                        // onUpdateLeafButtonClick()
+                    }
+                }
+            }
+        }
         renderCrop()
-        // drawGrid(
-        //     Vector2.Zero,
-        //     new Vector2(
-        //         state.cropedImage.width,
-        //         state.cropedImage.height
-        //     )
-        // )
     }
 }
 
 function renderCrop() {
+    if (!state.cropedImage) {
+        return
+    }
+    state.canvas.width = state.cropedImage.width
+    state.canvas.height = state.cropedImage.height
+    state.ctx.putImageData(state.cropedImage, 0, 0)
 
+    renderLeafs()
+    // renderCurrentColumn()
+    renderLeafBox()
+    renderLeafBoxHandles()
+}
+
+function renderCurrentColumn() {
+    const i = state.currentLeaf
+    if (i == -1) return
+    const { height, offset } = state.leafsBoxes[i]
+
+    state.ctx.strokeStyle = "#0000FF88"
+    state.ctx.lineWidth = 2
+    state.ctx.beginPath()
+    state.ctx.moveTo(state.mouseX, offset)
+    state.ctx.lineTo(state.mouseX, offset + height)
+    state.ctx.closePath()
+    state.ctx.stroke()
+
+    state.ctx.strokeStyle = "#0000FF88"
+    state.ctx.lineWidth = 2
+    state.ctx.strokeRect(0, offset, state.canvas.width, height)
+    state.ctx.stroke()
+
+}
+
+function renderLeafBox() {
+    const i = state.currentLeaf
+    if (i == -1) return
+    const { height, offset } = state.leafsBoxes[i]
+    state.ctx.strokeStyle = "#0000FF88"
+    state.ctx.lineWidth = 2
+    state.ctx.strokeRect(0, offset, state.canvas.width, height)
+}
+
+function renderLeafBoxHandles() {
+    const handles = getLeafBoxHandles()
+    state.ctx.strokeStyle = "blue"
+    state.ctx.lineWidth = 2
+    state.ctx.fillStyle = "grey"
+    handles.forEach((b) => {
+        strokeRect(b, leafBoxHandleSize)
+        fillRect(b, leafBoxHandleSize)
+    })
+}
+
+function fillRect({ x, y }: Vector2, { x: w, y: h }: Vector2) {
+    state.ctx.fillRect(x, y, w, h)
+}
+
+function strokeRect({ x, y }: Vector2, { x: w, y: h }: Vector2) {
+    state.ctx.strokeRect(x, y, w, h)
+}
+
+function getLeafBoxHandles() {
+    const i = state.currentLeaf
+    if (i == -1) return []
+    const { height, offset } = state.leafsBoxes[i]
+    const mid = state.canvas.width / 2
+    const top = new Vector2(mid, offset).subtract(leafBoxHandleSize.scale(0.5))
+    const bottom = new Vector2(mid, height + offset).subtract(leafBoxHandleSize.scale(0.5))
+    return [top, bottom]
 }
 
 function renderSquare() {
@@ -314,7 +626,7 @@ function zoomWindow() {
 
     const zoomRadius = 50
     const zoomScale = 1.5
-    const img = state.loadedImages[state.currentImage]
+    const img = state.loadedImages[state.currentImage].img
 
     const hRatio = state.canvas.width / img.width
     const vRatio = state.canvas.height / img.height
@@ -451,88 +763,37 @@ function drawGrid(p1: Vector2, p3: Vector2) {
     }
 }
 
-async function calc() {
-    const img = state.loadedImages[state.currentImage]
-    const [sp1, sp2, sp3, sp4] = state.squarePoints
-    const { p1, p2: p3 } = state.channels
-
-    const hRatio = state.canvas.width / img.width
-    const vRatio = state.canvas.height / img.height
-    const ratio = Math.min(hRatio, vRatio)
-
-    const norm = sp2.subtract(sp1).normalize()
-    const p2 = findIntersection({ p: p1, d: norm }, { p: p3, d: norm.rotate270() }) ?? new Vector2(0, 0)
-    const p4 = findIntersection({ p: p1, d: norm.rotate90() }, { p: p3, d: new Vector2(0, 0).subtract(norm) }) ?? new Vector2(0, 0)
-    const points = [p1, p2, p3, p4].map((p) => p.scale(1 / ratio).apply(Math.floor))
-    const img2 = await extractAndAlignRectangle(img, points)
-
-    for (let i = 0; i < LEAFS_COUNT; i++) {
-        const x = 0;
-        const h = Math.floor(img2.height / LEAFS_COUNT)
-        const y = Math.floor(h * i)
-        const w = img2.width
-
-        const leaf = getSubImageData(img2, x, y, w, h)
-
-        const points = extractECGPixels(leaf).map((p) => p.y)
-        const max = Math.max(...points)
-        const min = Math.min(...points)
-        const hh = Math.floor(p1.distance(p4) / LEAFS_COUNT)
-        const norm = points.map((p) => (p - min) / (max - min) * hh)
-        const ww = p1.distance(p2)
-        const shrinked = resizeArray(norm, ww)
-
-        // const t1 = p1.add(p4.subtract(p1).scale((i / LEAFS_COUNT)))
-        // const t2 = p2.add(p3.subtract(p2).scale((i / LEAFS_COUNT)))
-
-        // const t3 = p1.add(p4.subtract(p1).scale(((i + 1) / LEAFS_COUNT)))
-        // const t4 = p2.add(p3.subtract(p2).scale(((i + 1) / LEAFS_COUNT)))
-        const yy = hh * i
-        const xx = p1.x
-        state.ctx.strokeStyle = "red"
-        state.ctx.beginPath()
-        state.ctx.moveTo(p1.x + 0, yy + p1.y + shrinked[0])
-        for (let x = 1; x < ww; x++) {
-            state.ctx.lineTo(p1.x + x, yy + p1.y + shrinked[x])
-        }
-        state.ctx.moveTo(0, shrinked[0])
-        state.ctx.closePath()
-        state.ctx.stroke()
-        // state.ctx.beginPath()
-        // state.ctx.moveTo(p1.x, y)
-        // state.ctx.lineTo(t2.x, t2.y)
-        // state.ctx.lineTo(t4.x, t4.y)
-        // state.ctx.lineTo(t3.x, t3.y)
-        // state.ctx.closePath()
-        // state.ctx.fill()
-
-        // console.log(points)
-        // state.ctx.putImageData(leaf, 0, 0)
-        // state.ctx.strokeRect(0, 0, w, h)
-    }
-}
 type Color = {
     r: number
     g: number
     b: number
     a: number
 }
-type Point = {
-    x: number
-    y: number
-    d: number
+
+function updateLeafPoints() {
+    if (!state.leafsData) { return }
+    if (state.currentLeaf == -1) { return }
+    for (let i = 1; i < state.canvas.width; i++) {
+        if (!state.leafsData[state.currentLeaf][i].modified) {
+            state.leafsData[state.currentLeaf][i] = getPointByIndex(i, state.leafsData[state.currentLeaf][i - 1])
+        }
+        // const t = getPoint(img, i, prev)
+        // points.push(t)
+    }
 }
+
 function extractECGPixels(img: ImageData) {
-    const points: Point[] = []
+    const points: LeafPoint[] = []
     for (let x = 0; x < img.width; x++) {
-        let prev: Point
+        let prev: LeafPoint
         if (points.length != 0) {
             prev = points[points.length - 1]
         } else {
             prev = {
                 d: 0,
                 x: 0,
-                y: img.height / 2
+                y: img.height / 2,
+                modified: false
             }
         }
         const t = getPoint(img, x, prev)
@@ -541,11 +802,17 @@ function extractECGPixels(img: ImageData) {
     return points
 }
 
-function getPoint(img: ImageData, x: number, prev: Point) {
-    const column: Point[] = []
-    for (let y = 0; y < img.height; y++) {
-        const color = getColor(img, x, y)
-        column.push({ x: x, y: y, d: calculateDarkness(color) })
+function getPointByIndex(x: number, prev: LeafPoint) {
+    const column: LeafPoint[] = []
+    const img = state.cropedImage
+    const i = state.currentLeaf
+    if (!img || i == -1) {
+        throw new Error("AAAAAAAAAAAAA")
+    }
+    const leafBox = state.leafsBoxes[i]
+    for (let y = 0; y < leafBox.height; y++) {
+        const color = getColor(img, x, leafBox.offset + y)
+        column.push({ x: x, y: y, d: calculateDarkness(color), modified: false })
     }
     const p = column.sort((a, b) => {
         const scoreA = getScore(a)
@@ -557,7 +824,38 @@ function getPoint(img: ImageData, x: number, prev: Point) {
     column.length = 0
     return p
 
-    function getScore(pixel: Point) {
+    function getScore(pixel: LeafPoint) {
+        const darknessWeight = 2
+        const distanceToPreviousWeight = 3
+        const distanceToCenterWeight = 1
+
+        const distanceToPrevious = Math.abs(pixel.y - prev.y)
+        const distanceToCenter = Math.abs(pixel.y - leafBox.height / 2)
+
+        return (pixel.d * darknessWeight)
+            - (distanceToPrevious * distanceToPreviousWeight)
+            - (distanceToCenter * distanceToCenterWeight)
+    }
+}
+
+
+function getPoint(img: ImageData, x: number, prev: LeafPoint) {
+    const column: LeafPoint[] = []
+    for (let y = 0; y < img.height; y++) {
+        const color = getColor(img, x, y)
+        column.push({ x: x, y: y, d: calculateDarkness(color), modified: false })
+    }
+    const p = column.sort((a, b) => {
+        const scoreA = getScore(a)
+        const scoreB = getScore(b)
+        return scoreB - scoreA
+    })[0]
+
+
+    column.length = 0
+    return p
+
+    function getScore(pixel: LeafPoint) {
         const darknessWeight = 2
         const distanceToPreviousWeight = 3
         const distanceToCenterWeight = 1
@@ -605,7 +903,6 @@ function getSubImageData(imageData: ImageData, x: number, y: number, width: numb
 }
 
 async function extractAndAlignRectangle(image: HTMLImageElement, points: Vector2[]) {
-
     const gridAngle = Vector2.Zero.angle(points[0].subtract(points[1])) - Math.PI / 2
 
     const minX = Math.min(...points.map((p) => p.x))
@@ -617,31 +914,84 @@ async function extractAndAlignRectangle(image: HTMLImageElement, points: Vector2
     const height = maxY - minY
 
     const tempCanvas = document.createElement('canvas') as HTMLCanvasElement
-    const tempCtx = tempCanvas.getContext('2d', {willReadFrequently: true}) as CanvasRenderingContext2D
+    const tempCtx = tempCanvas.getContext('2d', { willReadFrequently: true }) as CanvasRenderingContext2D
 
     tempCanvas.width = width
     tempCanvas.height = height
 
-    tempCtx.fillStyle = "red"
-    tempCtx.fillRect(0, 0, tempCanvas.width, tempCanvas.height)
     tempCtx.translate(width / 2, height / 2)
     tempCtx.rotate(gridAngle)
     tempCtx.drawImage(image, minX, minY, width, height, -width / 2, -height / 2, width, height)
-    tempCtx.rotate(-gridAngle)
 
     const sWidth = points[0].distance(points[1])
     const sHeight = points[1].distance(points[2])
 
     const tmpImgData = tempCtx.getImageData((width - sWidth) / 2, (height - sHeight) / 2, sWidth, sHeight)
-    tempCanvas.width = tmpImgData.width
-    tempCanvas.height = tmpImgData.height
+
+    tempCanvas.width = sWidth
+    tempCanvas.height = sHeight
     tempCtx.putImageData(tmpImgData, 0, 0)
-    const img3 = await  loadImageFromUrl(tempCanvas.toDataURL())
-    tempCanvas.width = state.canvas.width
-    tempCanvas.height = state.canvas.height
-    drawImageOnCanvas(tempCanvas, tempCtx, img3)
-    return tempCtx.getImageData(0, 0, tempCanvas.width, tempCanvas.height)
+
+    const img3 = await loadImageFromUrl(tempCanvas.toDataURL())
+
+    tempCanvas.width = state.initialCanvasSize.x
+    tempCanvas.height = state.initialCanvasSize.y
+
+    const hRatio = tempCanvas.width / img3.width
+    const vRatio = tempCanvas.height / img3.height
+    const ratio = Math.min(hRatio, vRatio)
+    tempCtx.clearRect(0, 0, tempCanvas.width, tempCanvas.height)
+    tempCtx.drawImage(img3, 0, 0, img3.width * ratio, img3.height * ratio)
+
+    return tempCtx.getImageData(0, 0, img3.width * ratio, img3.height * ratio)
 }
+
+
+// async function extractAndAlignRectangle(image: HTMLImageElement, points: Vector2[]) {
+
+//     const gridAngle = Vector2.Zero.angle(points[0].subtract(points[1])) - Math.PI / 2
+
+//     const minX = Math.min(...points.map((p) => p.x))
+//     const minY = Math.min(...points.map((p) => p.y))
+//     const maxX = Math.max(...points.map((p) => p.x))
+//     const maxY = Math.max(...points.map((p) => p.y))
+
+//     const width = maxX - minX
+//     const height = maxY - minY
+
+//     const tempCanvas = document.createElement('canvas') as HTMLCanvasElement
+//     const tempCtx = tempCanvas.getContext('2d', { willReadFrequently: true }) as CanvasRenderingContext2D
+
+//     tempCanvas.width = width
+//     tempCanvas.height = height
+
+//     tempCtx.fillStyle = "red"
+//     tempCtx.fillRect(0, 0, tempCanvas.width, tempCanvas.height)
+//     tempCtx.translate(width / 2, height / 2)
+//     tempCtx.rotate(gridAngle)
+//     tempCtx.drawImage(image, minX, minY, width, height, -width / 2, -height / 2, width, height)
+//     tempCtx.rotate(-gridAngle)
+
+
+//     const sWidth = points[0].distance(points[1])
+//     const sHeight = points[1].distance(points[2])
+
+//     const tmpImgData = tempCtx.getImageData((width - sWidth) / 2, (height - sHeight) / 2, sWidth, sHeight)
+//     tempCanvas.width = tmpImgData.width
+//     tempCanvas.height = tmpImgData.height
+//     tempCtx.putImageData(tmpImgData, 0, 0)
+//     const img3 = await loadImageFromUrl(tempCanvas.toDataURL())
+//     tempCanvas.width = state.initialCanvasSize.x
+//     tempCanvas.height = state.initialCanvasSize.y
+
+//     const hRatio = tempCanvas.width / img3.width
+//     const vRatio = tempCanvas.height / img3.height
+//     const ratio = Math.min(hRatio, vRatio)
+//     tempCtx.clearRect(0, 0, tempCanvas.width, tempCanvas.height)
+//     tempCtx.drawImage(img3, 0, 0, img3.width * ratio, img3.height * ratio)
+//     drawImageOnCanvas(tempCanvas, tempCtx, img3)
+//     return tempCtx.getImageData(0, 0, img3.width, img3.height)
+// }
 
 function resizeArray(arr: number[], targetLength: number): number[] {
     const currentLength = arr.length
@@ -670,3 +1020,125 @@ function interpolateArray(array: number[], length: number) {
         return array[lower] + (array[upper] - array[lower]) * (index - lower)
     })
 }
+
+function stripTransparentEdges(imageData: ImageData): ImageData {
+    const { width, height, data } = imageData
+    let minX = width, minY = height, maxX = 0, maxY = 0
+    let hasOpaquePixel = false
+
+    for (let y = 0; y < height; y++) {
+        for (let x = 0; x < width; x++) {
+            const index = (y * width + x) * 4
+            const alpha = data[index + 3]
+            if (alpha !== 0) {
+                hasOpaquePixel = true
+                if (x < minX) minX = x
+                if (x > maxX) maxX = x
+                if (y < minY) minY = y
+                if (y > maxY) maxY = y
+            }
+        }
+    }
+
+
+    const croppedWidth = maxX - minX + 1
+    const croppedHeight = maxY - minY + 1
+    const croppedData = new Uint8ClampedArray(croppedWidth * croppedHeight * 4)
+
+    for (let y = 0; y < croppedHeight; y++) {
+        for (let x = 0; x < croppedWidth; x++) {
+            const sourceIndex = ((y + minY) * width + (x + minX)) * 4
+            const targetIndex = (y * croppedWidth + x) * 4
+            croppedData[targetIndex] = data[sourceIndex]
+            croppedData[targetIndex + 1] = data[sourceIndex + 1]
+            croppedData[targetIndex + 2] = data[sourceIndex + 2]
+            croppedData[targetIndex + 3] = data[sourceIndex + 3]
+        }
+    }
+
+    return new ImageData(croppedData, croppedWidth, croppedHeight)
+}
+
+
+function pointOverRect(p: Vector2, rectPos: Vector2, rectSize: Vector2) {
+    return p.x >= rectPos.x && p.x <= rectPos.x + rectSize.x &&
+        p.y >= rectPos.y && p.y <= rectPos.y + rectSize.y
+}
+
+
+function downloadCSV(headers: string[], data: number[][], filename: string) {
+    const csvContent = [
+        headers.join(','),
+        ...transpose(data).map(row => row.join(','))
+    ].join('\n')
+
+    const blob = new Blob([csvContent], { type: 'text/csv' })
+    const url = URL.createObjectURL(blob)
+
+    const a = document.createElement('a')
+    a.href = url
+    a.download = filename
+    document.body.appendChild(a)
+    a.click()
+    document.body.removeChild(a)
+
+    URL.revokeObjectURL(url)
+}
+
+function transpose<T>(array: T[][]): T[][] {
+    return array[0].map((_, colIndex) => array.map(row => row[colIndex]))
+}
+
+function clean(){        
+        state.squareDiagonal = []
+        state.squarePoints = []
+        state.action = Action.NOTHING
+        state.channels = { p1: new Vector2(0, 0), p2: new Vector2(0, 0) }
+        state.channelsSelectState = "pos"
+        state.dragging = false
+        state.cropedImage = null
+        state.currentLeaf = -1
+        state.leafsData = null
+        state.findDataAction = FindDataAction.NOTHING
+        state.leafsBoxes = []
+        state.adjustBoxAction = null
+        state.canvas.width = state.initialCanvasSize.x
+        state.canvas.height = state.initialCanvasSize.y
+}
+
+
+
+function convertEcgData(
+    ecgData: number[],
+    speed: number,
+    amplitude: number,
+    squareSide: number,
+    pointsPerSquare: number
+  ): number[] {
+    const mmPerPixel = 10 / squareSide
+    const mvPerPixel = (1 / amplitude) * mmPerPixel
+  
+    const ecgAbsolute = ecgData.map(pixel => pixel * mvPerPixel)
+  
+    const currentSamplesPerSquare = (speed / 10) * (squareSide / pointsPerSquare)
+    const scaleFactor = pointsPerSquare / currentSamplesPerSquare
+    const newSize = Math.round(ecgAbsolute.length * scaleFactor)
+  
+    const resizedEcg = new Array(newSize)
+    for (let i = 0; i < newSize; i++) {
+      const index = (i * (ecgAbsolute.length - 1)) / (newSize - 1)
+      const lowerIndex = Math.floor(index)
+      const upperIndex = Math.ceil(index)
+      const weight = index - lowerIndex
+  
+      if (upperIndex === lowerIndex) {
+        resizedEcg[i] = ecgAbsolute[lowerIndex]
+      } else {
+        resizedEcg[i] =
+          ecgAbsolute[lowerIndex] * (1 - weight) + ecgAbsolute[upperIndex] * weight
+      }
+    }
+  
+    return resizedEcg
+  }
+

@@ -63,6 +63,27 @@ class Button extends BaseElement {
         return div;
     }
 }
+class Label extends BaseElement {
+    constructor(value) {
+        super(value);
+        this.className = "label";
+        this.id = "";
+    }
+    updateValue(value) {
+        this.title = value;
+        const title = document.getElementById(this.id);
+        title.innerHTML = value;
+    }
+    render(parentId) {
+        this.id = this.getId(parentId !== null && parentId !== void 0 ? parentId : "");
+        const div = this.renderWrapper();
+        const label = document.createElement("label");
+        label.textContent = this.title;
+        label.id = this.id;
+        div.appendChild(label);
+        return div;
+    }
+}
 class Input extends BaseElement {
     constructor(title, callback, defaultValue) {
         super(title);
@@ -106,6 +127,38 @@ class ToggleBoxes extends BaseElement {
             const span = document.createElement("span");
             span.textContent = item.label;
             label.appendChild(checkbox);
+            label.appendChild(span);
+            div.appendChild(label);
+        });
+        return div;
+    }
+}
+class RadioButtonGroup extends BaseElement {
+    constructor(title, items, onChange, dir = "row") {
+        super(title);
+        this.className = "radio-button-group";
+        this.items = items;
+        this.onChange = onChange;
+        this.dir = dir;
+        this.className += " " + dir;
+    }
+    handleSelect(index) {
+        this.items.forEach((item, i) => item.selected = i === index);
+        this.onChange(this.items[index]);
+    }
+    render(parentId) {
+        const div = this.renderWrapper();
+        this.items.forEach((item, index) => {
+            const label = document.createElement("label");
+            label.classList.add(...this.className.split(" "));
+            const radioButton = document.createElement("input");
+            radioButton.type = "radio";
+            radioButton.name = this.className;
+            radioButton.checked = item.selected;
+            radioButton.addEventListener("change", () => this.handleSelect(index));
+            const span = document.createElement("span");
+            span.textContent = item.label;
+            label.appendChild(radioButton);
             label.appendChild(span);
             div.appendChild(label);
         });
@@ -172,5 +225,33 @@ injectStyles(`
 .toggle-boxes span {
     font-size: 16px;
 }
+    .radio-button-group {
+    display: flex;
+    margin: 10px;
+}
+
+.radio-button-group.row {
+    flex-direction: row;
+}
+
+.radio-button-group.col {
+    flex-direction: column;
+}
+
+.radio-button-group label {
+    display: flex;
+    flex-direction: row;
+    gap: 10px;
+    cursor: pointer;
+    align-items: center;
+}
+
+.radio-button-group input[type="radio"] {
+    transform: scale(1.2);
+}
+
+.radio-button-group span {
+    font-size: 16px;
+}
 `);
-export { BaseElement, Button, Column, Row, Input, ToggleBoxes };
+export { BaseElement, Button, Column, Row, Input, ToggleBoxes, Label, RadioButtonGroup };
