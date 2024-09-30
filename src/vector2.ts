@@ -111,3 +111,4 @@ export function findIntersection(line1: Line, line2: Line): Vector2 | null {
 
   return new Vector2(P1.x + t * D1.x, P1.y + t * D1.y)
 }
+

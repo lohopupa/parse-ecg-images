@@ -222,50 +222,43 @@ const injectStyles = (css: string) => {
     document.head.appendChild(style);
 };
 
-injectStyles(`
-.column {
-    display: flex;
-    flex-direction: column;
-    margin: 5px;
+injectStyles(`.column,
+.row,
+.container,
+.input,
+.toggle-boxes,
+.radio-button-group {
+    margin: 2px; /* Decreased from 5px or 10px */
 }
-.row {
-    display: flex;
-    flex-direction: row;
-    margin: 5px;
-}
+
 .container {
-    display: flex;
-    flex-direction: column;
-    margin: 5px;
-    width: fit-content;
-    gap: 5px;
+    gap: 2px; /* Decreased from 5px */
 }
-.items {
-    border: 1px solid rgb(54, 54, 54);
-}
+
 .input {
     display: flex;
     flex-direction: row;
     align-items: center;
-    margin: 10px;
+    margin: 5px; /* Decreased from 10px */
     border: 4px black;
     height: 30px;
-    gap: 10px;
+    gap: 5px; /* Decreased from 10px */
 }
 
 .input input {
     width: 150px;
 }
+
 .toggle-boxes {
     display: flex;
     flex-direction: column;
-    margin: 10px;
+    margin: 5px; /* Decreased from 10px */
 }
 
 .toggle-boxes label {
     display: flex;
     flex-direction: row;
-    gap: 10px;
+    gap: 5px; /* Decreased from 10px */
     cursor: pointer;
 }
 
@@ -276,9 +269,10 @@ injectStyles(`
 .toggle-boxes span {
     font-size: 16px;
 }
-    .radio-button-group {
+
+.radio-button-group {
     display: flex;
-    margin: 10px;
+    margin: 5px; /* Decreased from 10px */
 }
 
 .radio-button-group.row {
@@ -292,7 +286,7 @@ injectStyles(`
 .radio-button-group label {
     display: flex;
     flex-direction: row;
-    gap: 10px;
+    gap: 5px; /* Decreased from 10px */
     cursor: pointer;
     align-items: center;
 }
@@ -303,6 +297,10 @@ injectStyles(`
 
 .radio-button-group span {
     font-size: 16px;
+}
+
+.items {
+    border: 1px solid rgb(54, 54, 54);
 }
 `);
 

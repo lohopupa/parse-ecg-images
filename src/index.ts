@@ -262,7 +262,11 @@ function onSaveButtonClicked() {
     const imgPath = state.loadedImages[state.currentImage].filepath
     const filePath = `${imgPath}_${sex}_${qt}.csv`
     const [p1, p2, p3, p4] = state.squarePoints
-    downloadCSV(fileHeader, state.leafsData.map((l) => convertEcgData(l.map((p) => p.y), state.speedX, state.speedY, p1.distance(p2), state.pointsPerSquare)), filePath)
+    downloadCSV(
+        fileHeader, 
+        state.leafsData.map((l) => 
+            convertEcgData(flipData(l.map((p) => p.y)), state.speedX, state.speedY, p1.distance(p2), state.pointsPerSquare)),
+         filePath)
 }
 
 
@@ -946,53 +950,6 @@ async function extractAndAlignRectangle(image: HTMLImageElement, points: Vector2
     return tempCtx.getImageData(0, 0, img3.width * ratio, img3.height * ratio)
 }
 
-
-// async function extractAndAlignRectangle(image: HTMLImageElement, points: Vector2[]) {
-
-//     const gridAngle = Vector2.Zero.angle(points[0].subtract(points[1])) - Math.PI / 2
-
-//     const minX = Math.min(...points.map((p) => p.x))
-//     const minY = Math.min(...points.map((p) => p.y))
-//     const maxX = Math.max(...points.map((p) => p.x))
-//     const maxY = Math.max(...points.map((p) => p.y))
-
-//     const width = maxX - minX
-//     const height = maxY - minY
-
-//     const tempCanvas = document.createElement('canvas') as HTMLCanvasElement
-//     const tempCtx = tempCanvas.getContext('2d', { willReadFrequently: true }) as CanvasRenderingContext2D
-
-//     tempCanvas.width = width
-//     tempCanvas.height = height
-
-//     tempCtx.fillStyle = "red"
-//     tempCtx.fillRect(0, 0, tempCanvas.width, tempCanvas.height)
-//     tempCtx.translate(width / 2, height / 2)
-//     tempCtx.rotate(gridAngle)
-//     tempCtx.drawImage(image, minX, minY, width, height, -width / 2, -height / 2, width, height)
-//     tempCtx.rotate(-gridAngle)
-
-
-//     const sWidth = points[0].distance(points[1])
-//     const sHeight = points[1].distance(points[2])
-
-//     const tmpImgData = tempCtx.getImageData((width - sWidth) / 2, (height - sHeight) / 2, sWidth, sHeight)
-//     tempCanvas.width = tmpImgData.width
-//     tempCanvas.height = tmpImgData.height
-//     tempCtx.putImageData(tmpImgData, 0, 0)
-//     const img3 = await loadImageFromUrl(tempCanvas.toDataURL())
-//     tempCanvas.width = state.initialCanvasSize.x
-//     tempCanvas.height = state.initialCanvasSize.y
-
-//     const hRatio = tempCanvas.width / img3.width
-//     const vRatio = tempCanvas.height / img3.height
-//     const ratio = Math.min(hRatio, vRatio)
-//     tempCtx.clearRect(0, 0, tempCanvas.width, tempCanvas.height)
-//     tempCtx.drawImage(img3, 0, 0, img3.width * ratio, img3.height * ratio)
-//     drawImageOnCanvas(tempCanvas, tempCtx, img3)
-//     return tempCtx.getImageData(0, 0, img3.width, img3.height)
-// }
-
 function resizeArray(arr: number[], targetLength: number): number[] {
     const currentLength = arr.length
 
@@ -1123,15 +1080,16 @@ function convertEcgData(
     const currentSamplesPerSquare = (speed / 10) * (squareSide / pointsPerSquare)
     const scaleFactor = pointsPerSquare / currentSamplesPerSquare
     const newSize = Math.round(ecgAbsolute.length * scaleFactor)
-  
+    
     const resizedEcg = new Array(newSize)
+    console.log(ecgAbsolute.length)
     for (let i = 0; i < newSize; i++) {
       const index = (i * (ecgAbsolute.length - 1)) / (newSize - 1)
       const lowerIndex = Math.floor(index)
       const upperIndex = Math.ceil(index)
       const weight = index - lowerIndex
   
-      if (upperIndex === lowerIndex) {
+      if (upperIndex == lowerIndex) {
         resizedEcg[i] = ecgAbsolute[lowerIndex]
       } else {
         resizedEcg[i] =
@@ -1142,3 +1100,7 @@ function convertEcgData(
     return resizedEcg
   }
 
+function flipData(arr: number[]){
+    const max = Math.max(...arr)
+    return arr.map((v) => max - v)
+}
