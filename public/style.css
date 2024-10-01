@@ -15,6 +15,7 @@ body{
     left: 0;
     width: 85%;
     height: 99vh;
+    user-select: none;
 }
 
 .left-bar-wrapper {

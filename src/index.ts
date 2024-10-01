@@ -52,6 +52,7 @@ type State = {
     channelsSelectState: "pos" | "size"
     channels: { p1: Vector2, p2: Vector2 }
     dragging: boolean
+    rightButton: boolean
     pointsPerSquare: number
     cropedImage: ImageData | null
     currentLeaf: number
@@ -311,12 +312,22 @@ window.onload = () => {
     const input = document.getElementById("load-files") as HTMLInputElement
     input.addEventListener("change", addFiles)
     const canvas = document.getElementById("canvas") as HTMLCanvasElement
+    canvas.addEventListener("contextmenu", (e) => {
+        e.preventDefault()
+        e.stopPropagation()
+    })
     canvas.addEventListener("mousemove", (e) => {
         state.mouseDelta = new Vector2(e.offsetX - state.mouseX, e.offsetY - state.mouseY)
         state.mouseX = e.offsetX;
         state.mouseY = e.offsetY;
         render()
     });
+    canvas.addEventListener("mouseout", (e) => {
+        state.dragging = false
+        state.rightButton = false
+        state.adjustBoxAction = null
+        updateLeafPoints()
+    })
     canvas.addEventListener("wheel", (e) => {
         if (state.action == Action.FIND_DATA) {
             const mouse = new Vector2(state.mouseX, state.mouseY)
@@ -343,8 +354,13 @@ window.onload = () => {
             }
         }
     })
-    canvas.addEventListener("mousedown", () => {
+    canvas.addEventListener("mousedown", (e) => {
         state.dragging = true
+        if(e.button == 2){
+            state.adjustBoxAction = "leaf"
+            state.rightButton = true
+            return
+        }
         if (state.action == Action.FIND_DATA) {
             const [top, bottom] = getLeafBoxHandles()
             const mouse = new Vector2(state.mouseX, state.mouseY)
@@ -362,6 +378,7 @@ window.onload = () => {
     })
     canvas.addEventListener("mouseup", () => {
         state.dragging = false
+        state.rightButton = false
         state.adjustBoxAction = null
         updateLeafPoints()
     })
@@ -421,7 +438,8 @@ window.onload = () => {
         speedX: 50,
         speedY: 10,
         canvasSizeBeforeCrop: Vector2.Zero,
-        canvas2imgRatio: 0
+        canvas2imgRatio: 0,
+        rightButton: false
     }
 
     const parameters = new Column("Parameters",
@@ -576,16 +594,30 @@ function render() {
                     state.leafsBoxes[state.currentLeaf].height -= state.mouseDelta.y
                 } else if (state.adjustBoxAction == "bottom") {
                     state.leafsBoxes[state.currentLeaf].height += state.mouseDelta.y
-                } else if (state.adjustBoxAction == "leaf") {
+                } else if (state.adjustBoxAction == "leaf" && !state.rightButton) {
                     if (state.leafsData) {
                         state.leafsData[state.currentLeaf][state.mouseX].y = state.mouseY - state.leafsBoxes[state.currentLeaf].offset
                         state.leafsData[state.currentLeaf][state.mouseX].modified = true
+                        // onUpdateLeafButtonClick()
+                    }
+                }else if (state.adjustBoxAction == "leaf" && state.rightButton) {
+                    if (state.leafsData) {
+                        for(let i = -7; i <= 7; i++){
+                            if(state.mouseX + i < 0 || state.mouseX + i > state.leafsData[state.currentLeaf].length){
+                                continue
+                            }
+                            state.leafsData[state.currentLeaf][state.mouseX + i].modified = false
+                        }
                         // onUpdateLeafButtonClick()
                     }
                 }
             }
         }
         renderCrop()
+        if(state.dragging && state.rightButton){
+            state.ctx.fillStyle = "#AAAAAAAA"
+            drawCircle(state.ctx, state.mouseX, state.mouseY, 15)
+        }
     }
 }
 
@@ -668,7 +700,7 @@ function renderLeafBoxHandles() {
     const handles = getLeafBoxHandles()
     state.ctx.strokeStyle = "blue"
     state.ctx.lineWidth = 2
-    state.ctx.fillStyle = "grey"
+    state.ctx.fillStyle = "#AAAAAA55"
     handles.forEach((b) => {
         strokeRect(b, leafBoxHandleSize)
         fillRect(b, leafBoxHandleSize)
