@@ -72,13 +72,19 @@ export class Vector2 {
     return new Vector2(f(this.x), f(this.y))
   }
 
+  set(x: number, y: number) {
+    this.x = x
+    this.y = y
+    return this
+  }
+
   isZero(): boolean {
     return this.x == 0 && this.y == 0
   }
 
-  set(x: number, y: number) {
-    this.x = x
-    this.y = y
+
+  toSize() {
+    return { width: this.x, height: this.y }
   }
 
   static get Zero() {
