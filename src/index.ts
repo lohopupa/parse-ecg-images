@@ -337,7 +337,7 @@ window.onload = () => {
                 state.squareDiagonal[1] = rotatePointRelative(
                     ...bottomRight.xy, 
                     ...leftTop.xy, 
-                    Math.sign(e.deltaY) * 0.5)
+                    Math.sign(e.deltaY) * 0.1)
                 render()
                 
             }
