@@ -11,6 +11,10 @@ export class Vector2 {
     return [this.x, this.y]
   }
 
+  get yx(): [number, number] {
+    return [this.y, this.x]
+  }
+
   add(v: Vector2): Vector2 {
     return new Vector2(this.x + v.x, this.y + v.y);
   }
@@ -45,7 +49,7 @@ export class Vector2 {
   }
 
   angle(v: Vector2): number {
-    return Math.atan2(...this.subtract(v).xy)
+    return Math.atan2(...this.subtract(v).yx)
   }
 
   clone(): Vector2 {
@@ -85,6 +89,14 @@ export class Vector2 {
 
   toSize() {
     return { width: this.x, height: this.y }
+  }
+
+  toPolar(){
+    return {r: this.magnitude(), t: this.angle(Vector2.Zero)}
+  }
+
+  static fromPolar({r, t}: {r: number, t: number}){
+    return new Vector2(r * Math.cos(t), r * Math.sin(t))
   }
 
   static get Zero() {

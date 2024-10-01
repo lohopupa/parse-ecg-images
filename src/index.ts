@@ -295,6 +295,18 @@ function onUpdateLeafButtonClick() {
 // }
 
 
+function rotatePointRelative(x: number, y: number, anchorX: number, anchorY: number, relativeAngle: number): [number, number] {
+    const deltaX = x - anchorX
+    const deltaY = y - anchorY
+    const currentAngle = Math.atan2(deltaY, deltaX) // angle of the point relative to the anchor
+    const newAngle = currentAngle + (relativeAngle * Math.PI) / 180 // new angle after adding the relative angle
+
+    const distance = Math.sqrt(deltaX * deltaX + deltaY * deltaY) // distance from anchor point
+    const xNew = anchorX + distance * Math.cos(newAngle)
+    const yNew = anchorY + distance * Math.sin(newAngle)
+
+    return [xNew, yNew]
+}
 window.onload = () => {
     const input = document.getElementById("load-files") as HTMLInputElement
     input.addEventListener("change", addFiles)
@@ -306,7 +318,6 @@ window.onload = () => {
         render()
     });
     canvas.addEventListener("wheel", (e) => {
-        const deltaY = e.deltaY
         if (state.action == Action.FIND_DATA) {
             const mouse = new Vector2(state.mouseX, state.mouseY)
             if (pointOverRect(mouse,
@@ -314,6 +325,21 @@ window.onload = () => {
                 new Vector2(state.canvas.width, state.leafsBoxes[state.currentLeaf].height))) {
                 state.leafsBoxes[state.currentLeaf].zeroPoint += Math.sign(e.deltaY)
                 render()
+            }
+        }else if(state.action == Action.DRAW_SQUARE){
+            if(state.squareDiagonal.length == 2){
+                const leftTop = Vector2.FromArray(state.squareDiagonal[0])
+                const bottomRight = Vector2.FromArray(state.squareDiagonal[1])
+                // const v = bottomRight.subtract(leftTop)
+                // const polar = v.toPolar()
+                // polar.t += Math.sign(e.deltaY) * 0.1
+                // const v2 = Vector2.fromPolar(polar)
+                state.squareDiagonal[1] = rotatePointRelative(
+                    ...bottomRight.xy, 
+                    ...leftTop.xy, 
+                    Math.sign(e.deltaY) * 0.5)
+                render()
+                
             }
         }
     })
