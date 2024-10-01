@@ -29,7 +29,14 @@ body{
 
 .left-bar {
     /* width: 500px; */
-    height: 95vh;
+    height: 80vh;
     
     overflow-y: auto;
+}
+
+.kitten {
+    /* width: 50px; */
+    /* position: absolute;
+    left: 0;
+    bottom: 0; */
 }
