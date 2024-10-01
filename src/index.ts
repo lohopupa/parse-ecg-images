@@ -575,7 +575,7 @@ function renderCrop() {
     // renderCurrentColumn()
     renderLeafBox()
     renderLeafBoxHandles()
-    renderTestSquare()
+    // renderTestSquare()
 }
 
 function getSquareSide(){
