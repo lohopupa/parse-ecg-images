@@ -811,6 +811,7 @@ function drawSquare(ctx: CanvasRenderingContext2D, x1: number, y1: number, x2: n
     ctx.closePath();
     ctx.stroke();
     drawLineThroughCanvas(ctx, bottomLeft.x, bottomLeft.y, p2.x, p2.y, state.canvas.width, state.canvas.height)
+    drawLineThroughCanvas(ctx, p1.x, p1.y, bottomLeft.x, bottomLeft.y, state.canvas.width, state.canvas.height)
 }
 
 function drawLineThroughCanvas(ctx: CanvasRenderingContext2D, x1: number, y1: number, x2: number, y2: number, canvasWidth: number, canvasHeight: number) {
