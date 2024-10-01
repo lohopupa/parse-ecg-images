@@ -127,7 +127,7 @@ const onCropImageButtonClick = async () => {
     const points = [p1, p2, p3, p4].map((p) => p.scale(1 / ratio).apply(Math.floor))
     state.cropedImage = await extractAndAlignRectangle(img, points)
     state.action = Action.FIND_DATA
-    saveImage(state.cropedImage!, "test.png")
+    // saveImage(state.cropedImage!, "test.png")
 
     render()
     onFindDataButtonClick()
