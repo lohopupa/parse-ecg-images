@@ -48,8 +48,9 @@ export class Vector2 {
     return Math.sqrt((this.x - v.x) ** 2 + (this.y - v.y) ** 2);
   }
 
+  // TODO: this is crap
   angle(v: Vector2): number {
-    return Math.atan2(...this.subtract(v).yx)
+    return Math.atan2(...this.subtract(v).xy)
   }
 
   clone(): Vector2 {
