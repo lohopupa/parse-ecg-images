@@ -342,7 +342,7 @@ window.onload = () => {
                 onCropImageButtonClick()
                 break
             }
-            case "DigitS":{
+            case "KeyS":{
                 onSaveButtonClicked()
                 break
             }
