@@ -68,6 +68,7 @@ type State = {
     speedY: number
     canvasSizeBeforeCrop: Vector2
     canvas2imgRatio: number
+    lastClick: number 
 }
 
 let state: State
@@ -395,6 +396,10 @@ window.onload = () => {
         updateLeafPoints()
     })
     canvas.addEventListener("click", (e) => {
+        if(e.timeStamp - 150 < state.lastClick){
+            return
+        }
+        state.lastClick = e.timeStamp
         switch (state.action) {
             case Action.NOTHING: {
                 break
@@ -451,8 +456,11 @@ window.onload = () => {
         speedY: 10,
         canvasSizeBeforeCrop: Vector2.Zero,
         canvas2imgRatio: 0,
-        rightButton: false
+        rightButton: false,
+        lastClick: 0
     }
+
+
 
     const parameters = new Column("Parameters",
         [
