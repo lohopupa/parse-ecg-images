@@ -5,6 +5,8 @@ import { findIntersection, Vector2 } from "./vector2.js"
 const fileHeader = ["I", "II", "III", "aVR", "aVL", "aVF", "V1", "V2", "V3", "V4", "V5", "V6"]
 const LEAFS_COUNT = fileHeader.length
 const leafBoxHandleSize = new Vector2(30, 20)
+const AudioElement = document.getElementById("audio") as HTMLAudioElement
+let AudioPlaying = false
 enum Action {
     NOTHING,
     DRAW_SQUARE,
@@ -295,7 +297,6 @@ function onUpdateLeafButtonClick() {
 //     state.findDataAction = FindDataAction.TUNE_LEAF
 // }
 
-
 function rotatePointRelative(x: number, y: number, anchorX: number, anchorY: number, relativeAngle: number): [number, number] {
     const deltaX = x - anchorX
     const deltaY = y - anchorY
@@ -308,7 +309,9 @@ function rotatePointRelative(x: number, y: number, anchorX: number, anchorY: num
 
     return [xNew, yNew]
 }
+
 window.onload = () => {
+    AudioElement.volume = 0.005
     const input = document.getElementById("load-files") as HTMLInputElement
     input.addEventListener("change", addFiles)
     const canvas = document.getElementById("canvas") as HTMLCanvasElement
@@ -321,12 +324,17 @@ window.onload = () => {
         state.mouseX = e.offsetX;
         state.mouseY = e.offsetY;
         render()
+
     });
     canvas.addEventListener("mouseout", (e) => {
         state.dragging = false
         state.rightButton = false
         state.adjustBoxAction = null
         updateLeafPoints()
+        // if(AudioPlaying){
+        //     AudioPlaying = false
+        //     AudioElement.pause()
+        // }
     })
     canvas.addEventListener("wheel", (e) => {
         if (state.action == Action.FIND_DATA) {
@@ -334,7 +342,7 @@ window.onload = () => {
             if (pointOverRect(mouse,
                 new Vector2(0, state.leafsBoxes[state.currentLeaf].offset),
                 new Vector2(state.canvas.width, state.leafsBoxes[state.currentLeaf].height))) {
-                state.leafsBoxes[state.currentLeaf].zeroPoint += Math.sign(e.deltaY)
+                state.leafsBoxes[state.currentLeaf].zeroPoint += Math.sign(e.deltaY) * (e.shiftKey ? 5 : 1)
                 render()
             }
         }else if(state.action == Action.DRAW_SQUARE){
@@ -355,6 +363,10 @@ window.onload = () => {
         }
     })
     canvas.addEventListener("mousedown", (e) => {
+        if(!AudioPlaying){
+            AudioElement.play()
+            AudioPlaying = true
+        }
         state.dragging = true
         if(e.button == 2){
             state.adjustBoxAction = "leaf"
@@ -473,11 +485,11 @@ window.onload = () => {
                     new Button("Move chanels", onMoveChannelsButtonClick),
                     new Button("Crop", onCropImageButtonClick),
                 ]),
-                new Column("AAAA Data", [
-                    new Button("Find data", onFindDataButtonClick),
-                    new Button("Update leaf", onUpdateLeafButtonClick),
-                    // new Button("Tune Leaf", onTuneLeafButtonClick),
-                ]),
+                // new Column("AAAA Data", [
+                //     new Button("Find data", onFindDataButtonClick),
+                //     new Button("Update leaf", onUpdateLeafButtonClick),
+                //     // new Button("Tune Leaf", onTuneLeafButtonClick),
+                // ]),
             ]),
             new Column("Leafs", [
                 currentLeafLabel,
@@ -598,17 +610,15 @@ function render() {
                     if (state.leafsData) {
                         state.leafsData[state.currentLeaf][state.mouseX].y = state.mouseY - state.leafsBoxes[state.currentLeaf].offset
                         state.leafsData[state.currentLeaf][state.mouseX].modified = true
-                        // onUpdateLeafButtonClick()
                     }
                 }else if (state.adjustBoxAction == "leaf" && state.rightButton) {
                     if (state.leafsData) {
-                        for(let i = -7; i <= 7; i++){
+                        for(let i = -15; i <= 15; i++){
                             if(state.mouseX + i < 0 || state.mouseX + i > state.leafsData[state.currentLeaf].length){
                                 continue
                             }
                             state.leafsData[state.currentLeaf][state.mouseX + i].modified = false
                         }
-                        // onUpdateLeafButtonClick()
                     }
                 }
             }
