@@ -312,9 +312,46 @@ function rotatePointRelative(x: number, y: number, anchorX: number, anchorY: num
 }
 
 window.onload = () => {
-    AudioElement.volume = 0.005
+    AudioElement.volume = 0.001
     const input = document.getElementById("load-files") as HTMLInputElement
     input.addEventListener("change", addFiles)
+
+    window.addEventListener("keypress", (e) => {
+        switch(e.code){
+            case "KeyQ":{
+                onLeafPrevButtonClick()
+                break
+            }
+            case "KeyA":{
+                onLeafNextButtonClick()
+                break
+            }
+            case "Digit1":{
+                loadFiles()
+                break
+            }
+            case "Digit2":{
+                onSquareButtonClick()
+                break
+            }
+            case "Digit3":{
+                onSelectChannelsButtonClick()
+                break
+            }
+            case "Digit4":{
+                onCropImageButtonClick()
+                break
+            }
+            case "DigitS":{
+                onSaveButtonClicked()
+                break
+            }
+            default:{
+                console.log("Unbinded KeyCode:", e.code)
+                break
+            }
+        }
+    })
     const canvas = document.getElementById("canvas") as HTMLCanvasElement
     canvas.addEventListener("contextmenu", (e) => {
         e.preventDefault()
