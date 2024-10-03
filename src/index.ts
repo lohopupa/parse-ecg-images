@@ -1055,7 +1055,7 @@ function getColor(img: ImageData, x: number, y: number): Color {
 }
 
 function calculateDarkness({ r, g, b }: Color) {
-    let brightness = 0.299 * r + 0.587 * g + 0.114 * b
+    let brightness = 0.0 * r + 0.587 * g + 0.114 * b
     return 255 - brightness
 }
 
