@@ -68,7 +68,7 @@ type State = {
     speedY: number
     canvasSizeBeforeCrop: Vector2
     canvas2imgRatio: number
-    lastClick: number 
+    lastClick: number
 }
 
 let state: State
@@ -89,14 +89,14 @@ const colors = [
 ]
 
 const onPrevImageClick = () => {
-    if(!confirm("Are done with that image?"))return
+    if (!confirm("Are done with that image?")) return
     state.currentImage = Math.max(0, state.currentImage - 1)
     clean()
     render()
 }
 
 const onNextImageClick = () => {
-    if(!confirm("Are done with that image?"))return
+    if (!confirm("Are done with that image?")) return
     state.currentImage = Math.min(state.loadedImages.length, state.currentImage + 1)
     clean()
     render()
@@ -210,7 +210,13 @@ const onFindDataButtonClick = () => {
     })
     state.leafsBoxes = Array.from({ length: LEAFS_COUNT }, (_, i) => {
         const y = Math.floor(h * i)
-        return { offset: y, height: h, zeroPoint: state.leafsData?state.leafsData[i][0].y:h/2 }
+        return {
+            offset: y,
+            height: h,
+            zeroPoint: state.leafsData
+                ? state.leafsData[i][0].y
+                : h / 2
+        }
     })
     render()
 }
@@ -284,7 +290,7 @@ function onSaveButtonClicked() {
     downloadCSV(
         fileHeader,
         state.leafsData.map((l, i) =>
-            convertEcgData(l.map((p) => state.leafsBoxes[i].zeroPoint- p.y), state.speedX, state.speedY, squareSide, state.pointsPerSquare)),
+            convertEcgData(l.map((p) => state.leafsBoxes[i].zeroPoint - p.y), state.speedX, state.speedY, squareSide, state.pointsPerSquare)),
         filePath)
 }
 
@@ -317,36 +323,36 @@ window.onload = () => {
     input.addEventListener("change", addFiles)
 
     window.addEventListener("keypress", (e) => {
-        switch(e.code){
-            case "KeyQ":{
+        switch (e.code) {
+            case "KeyQ": {
                 onLeafPrevButtonClick()
                 break
             }
-            case "KeyA":{
+            case "KeyA": {
                 onLeafNextButtonClick()
                 break
             }
-            case "Digit1":{
+            case "Digit1": {
                 loadFiles()
                 break
             }
-            case "Digit2":{
+            case "Digit2": {
                 onSquareButtonClick()
                 break
             }
-            case "Digit3":{
+            case "Digit3": {
                 onSelectChannelsButtonClick()
                 break
             }
-            case "Digit4":{
+            case "Digit4": {
                 onCropImageButtonClick()
                 break
             }
-            case "KeyS":{
+            case "KeyS": {
                 onSaveButtonClicked()
                 break
             }
-            default:{
+            default: {
                 console.log("Unbinded KeyCode:", e.code)
                 break
             }
@@ -383,8 +389,8 @@ window.onload = () => {
                 state.leafsBoxes[state.currentLeaf].zeroPoint += Math.sign(e.deltaY) * (e.shiftKey ? 5 : 1)
                 render()
             }
-        }else if(state.action == Action.DRAW_SQUARE){
-            if(state.squareDiagonal.length == 2){
+        } else if (state.action == Action.DRAW_SQUARE) {
+            if (state.squareDiagonal.length == 2) {
                 const leftTop = Vector2.FromArray(state.squareDiagonal[0])
                 const bottomRight = Vector2.FromArray(state.squareDiagonal[1])
                 // const v = bottomRight.subtract(leftTop)
@@ -392,21 +398,21 @@ window.onload = () => {
                 // polar.t += Math.sign(e.deltaY) * 0.1
                 // const v2 = Vector2.fromPolar(polar)
                 state.squareDiagonal[1] = rotatePointRelative(
-                    ...bottomRight.xy, 
-                    ...leftTop.xy, 
+                    ...bottomRight.xy,
+                    ...leftTop.xy,
                     Math.sign(e.deltaY) * 0.1)
                 render()
-                
+
             }
         }
     })
     canvas.addEventListener("mousedown", (e) => {
-        if(!AudioPlaying){
+        if (!AudioPlaying) {
             AudioElement.play()
             AudioPlaying = true
         }
         state.dragging = true
-        if(e.button == 2){
+        if (e.button == 2) {
             state.adjustBoxAction = "leaf"
             state.rightButton = true
             return
@@ -433,7 +439,7 @@ window.onload = () => {
         updateLeafPoints()
     })
     canvas.addEventListener("click", (e) => {
-        if(e.timeStamp - 150 < state.lastClick){
+        if (e.timeStamp - 150 < state.lastClick) {
             return
         }
         state.lastClick = e.timeStamp
@@ -515,7 +521,7 @@ window.onload = () => {
                     [
                         { label: "Male", value: "male", selected: false },
                         { label: "Female", value: "female", selected: false },
-                        { label: "Combat Helicopter", value: "none", selected: true },
+                        { label: "N/A", value: "none", selected: true },
                     ],
                     onSEXChange,
                     "col"),
@@ -656,10 +662,10 @@ function render() {
                         state.leafsData[state.currentLeaf][state.mouseX].y = state.mouseY - state.leafsBoxes[state.currentLeaf].offset
                         state.leafsData[state.currentLeaf][state.mouseX].modified = true
                     }
-                }else if (state.adjustBoxAction == "leaf" && state.rightButton) {
+                } else if (state.adjustBoxAction == "leaf" && state.rightButton) {
                     if (state.leafsData) {
-                        for(let i = -15; i <= 15; i++){
-                            if(state.mouseX + i < 0 || state.mouseX + i > state.leafsData[state.currentLeaf].length){
+                        for (let i = -15; i <= 15; i++) {
+                            if (state.mouseX + i < 0 || state.mouseX + i > state.leafsData[state.currentLeaf].length) {
                                 continue
                             }
                             state.leafsData[state.currentLeaf][state.mouseX + i].modified = false
@@ -669,7 +675,7 @@ function render() {
             }
         }
         renderCrop()
-        if(state.dragging && state.rightButton){
+        if (state.dragging && state.rightButton) {
             state.ctx.fillStyle = "#AAAAAAAA"
             drawCircle(state.ctx, state.mouseX, state.mouseY, 15)
         }
@@ -691,21 +697,21 @@ function renderCrop() {
     // renderTestSquare()
 }
 
-function getSquareSide(){
+function getSquareSide() {
     const [p1, p2, p3, p4] = state.squarePoints
     const img = state.loadedImages[state.currentImage].img
     const ratioC2I = getRatio(state.canvasSizeBeforeCrop.toSize(), img)
     const imgSquareSize = p1.distance(p2) / ratioC2I
     const ratioI2C = getRatio(img, state.cropedImage!)
     // const ratio = state.canvas2imgRatio / getRatio(state.canvas, state.cropedImage!)
-    return (imgSquareSize / ratioI2C) * (10/9)
-    
+    return (imgSquareSize / ratioI2C) * (10 / 9)
+
 }
 
 function renderTestSquare() {
     const points = state.squarePoints
     // TODO: map points to new image size
-    
+
     // const ratio = getRatio(state.cropedImage!, state.imageSizeBeforeCrop.toSize())
     const squareSide = getSquareSide()
     state.ctx.strokeStyle = "blue"
@@ -1245,11 +1251,11 @@ function convertEcgData(
 
     const ecgAbsolute = ecgData.map(pixel => pixel * mvPerPixel)
 
-    const currentSamplesPerSquare = (speed / 10) * (squareSide / pointsPerSquare)
-    const scaleFactor = pointsPerSquare / currentSamplesPerSquare
-    const newSize = Math.round(ecgAbsolute.length * scaleFactor)
+    // const currentSamplesPerSquare = (speed / 10) * (squareSide / pointsPerSquare)
+    // const scaleFactor = pointsPerSquare / currentSamplesPerSquare
+    // const newSize = Math.round(ecgAbsolute.length * scaleFactor)
 
-    const resizedEcg = interpolateArray(ecgAbsolute, newSize)
+    // const resizedEcg = interpolateArray(ecgAbsolute, newSize)
 
     // const resizedEcg = new Array(newSize)
 
