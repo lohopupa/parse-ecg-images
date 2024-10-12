@@ -5,7 +5,6 @@ import { findIntersection, Vector2 } from "./vector2.js"
 const fileHeader = ["I", "II", "III", "aVR", "aVL", "aVF", "V1", "V2", "V3", "V4", "V5", "V6"]
 const LEAFS_COUNT = fileHeader.length
 const leafBoxHandleSize = new Vector2(30, 20)
-const AudioElement = document.getElementById("audio") as HTMLAudioElement
 let AudioPlaying = false
 enum Action {
     NOTHING,
@@ -318,7 +317,6 @@ function rotatePointRelative(x: number, y: number, anchorX: number, anchorY: num
 }
 
 window.onload = () => {
-    AudioElement.volume = 0.001
     const input = document.getElementById("load-files") as HTMLInputElement
     input.addEventListener("change", addFiles)
 
@@ -407,10 +405,6 @@ window.onload = () => {
         }
     })
     canvas.addEventListener("mousedown", (e) => {
-        if (!AudioPlaying) {
-            AudioElement.play()
-            AudioPlaying = true
-        }
         state.dragging = true
         if (e.button == 2) {
             state.adjustBoxAction = "leaf"
